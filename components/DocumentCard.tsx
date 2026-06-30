@@ -29,9 +29,6 @@ export function DocumentCard({ doc }: { doc: Doc }) {
           {doc.hospital && <p>{doc.hospital}</p>}
           {dateStr      && <p>{dateStr}</p>}
         </div>
-        {doc.summary && (
-          <p className="text-xs text-gray-600 line-clamp-2">{doc.summary}</p>
-        )}
         {doc.status === 'processing' && (
           <p className="text-xs text-blue-500 animate-pulse">מעבד...</p>
         )}

@@ -17,6 +17,7 @@ interface Doc {
 
 const FOLDER_ICONS: Record<string, string> = {
   'פסיכיאטריה': '🧠',
+  'בריאות הנפש': '🧠',
   'נוירולוגיה': '🧬',
   'קרדיולוגיה': '❤️',
   'אורטופדיה': '🦴',
@@ -53,9 +54,14 @@ export default function HomePage() {
     return () => clearTimeout(t)
   }, [docs, fetchDocs])
 
+  const FOLDER_MAP: Record<string, string> = {
+    'פסיכיאטריה': 'בריאות הנפש',
+  }
+
   // קיבוץ לפי תחום
   const folders = docs.reduce<Record<string, Doc[]>>((acc, doc) => {
-    const key = doc.specialty ?? 'אחר'
+    const specialty = doc.specialty ?? 'אחר'
+    const key = FOLDER_MAP[specialty] ?? specialty
     if (!acc[key]) acc[key] = []
     acc[key].push(doc)
     return acc
