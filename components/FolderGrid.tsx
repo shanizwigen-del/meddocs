@@ -2,8 +2,15 @@
 import {
   Brain, Heart, Bone, Stethoscope, Eye, Ear, Microscope,
   FlaskConical, Flower2, Ribbon, ScanLine, Pill, Baby,
-  UtensilsCrossed, Zap, Wind, FolderOpen
+  Zap, Wind, FolderOpen
 } from 'lucide-react'
+
+const StomachIcon = () => (
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M13 7 C9 7 7 10 7 13 C7 17 8 19 8 22 C8 27 11 29 15 29 C19 29 22 27 24 24 C26 21 27 18 27 15 C27 11 25 9 22 8 C20 7.5 18 8 17 9 C16 10 15 10 14 9.5 C13.5 9 13 8 13 7 Z" />
+    <path d="M22 8 C23 6 24 5 25 5" />
+  </svg>
+)
 
 interface FolderConfig {
   icon: React.ReactNode
@@ -50,7 +57,7 @@ const FOLDER_CONFIG: Record<string, FolderConfig> = {
     border: 'border-teal-100',
   },
   'גסטרו': {
-    icon: <UtensilsCrossed size={36} strokeWidth={1.5} />,
+    icon: <StomachIcon />,
     bg: 'bg-yellow-50',
     iconColor: 'text-yellow-600',
     border: 'border-yellow-100',
