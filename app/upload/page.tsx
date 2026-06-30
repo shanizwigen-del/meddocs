@@ -60,8 +60,8 @@ export default function UploadPage() {
       } else {
         setSplitResult('שגיאה בעיבוד')
       }
-    } catch {
-      setSplitResult('שגיאת רשת')
+    } catch (e) {
+      setSplitResult(`שגיאה: ${e instanceof Error ? e.message : 'נסי שוב'}`)
     }
     setSplitting(false)
   }

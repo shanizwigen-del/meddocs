@@ -1,5 +1,9 @@
 export const maxDuration = 60
 
+export const config = {
+  api: { bodyParser: { sizeLimit: '50mb' } },
+}
+
 import { put } from '@vercel/blob'
 import { waitUntil } from '@vercel/functions'
 import { sql } from '@/lib/db'
