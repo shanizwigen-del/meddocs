@@ -23,6 +23,14 @@ export default function DocPage() {
   const router = useRouter()
   const [doc, setDoc] = useState<Doc | null>(null)
   const [showEmail, setShowEmail] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    if (!confirm('למחוק את המסמך לצמיתות?')) return
+    setDeleting(true)
+    await fetch(`/api/documents/${id}`, { method: 'DELETE' })
+    router.push('/')
+  }
 
   useEffect(() => {
     fetch(`/api/documents/${id}`).then(r => r.json()).then(setDoc)
@@ -42,6 +50,9 @@ export default function DocPage() {
             ← חזרה
           </button>
           <div className="flex gap-2">
+            <button onClick={handleDelete} disabled={deleting} className="border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm">
+              {deleting ? 'מוחק...' : 'מחק'}
+            </button>
             <button onClick={() => setShowEmail(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
               שלח במייל
             </button>
