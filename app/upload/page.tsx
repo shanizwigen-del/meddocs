@@ -51,14 +51,24 @@ export default function UploadPage() {
     setSplitting(true)
     setSplitResult(null)
     try {
-      const form = new FormData()
-      form.append('file', splitFile)
-      const res = await fetch('/api/split', { method: 'POST', body: form })
+      // שלב 1: העלאה ישירה ל-Blob (עוקפת את גבול ה-4.5MB של Vercel API)
+      const { upload } = await import('@vercel/blob/client')
+      const blob = await upload(splitFile.name, splitFile, {
+        access: 'public',
+        handleUploadUrl: '/api/blob-token',
+      })
+
+      // שלב 2: שליחת ה-URL לעיבוד
+      const res = await fetch('/api/split', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blobUrl: blob.url, filename: splitFile.name }),
+      })
       const data = await res.json()
       if (res.ok) {
         setSplitResult(`זוהו ${data.count} מסמכים מתוך ${data.pages} עמודים — מעובד ברקע`)
       } else {
-        setSplitResult('שגיאה בעיבוד')
+        setSplitResult(`שגיאה: ${data.error || 'נסי שוב'}`)
       }
     } catch (e) {
       setSplitResult(`שגיאה: ${e instanceof Error ? e.message : 'נסי שוב'}`)
