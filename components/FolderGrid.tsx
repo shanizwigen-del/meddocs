@@ -5,6 +5,20 @@ import {
   Zap, Wind, FolderOpen
 } from 'lucide-react'
 
+const FamilyIcon = () => (
+  <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    {/* הורה שמאל */}
+    <circle cx="11" cy="9" r="3.5" />
+    <path d="M5 24 C5 19 8 17 11 17 C14 17 17 19 17 24" />
+    {/* הורה ימין */}
+    <circle cx="25" cy="9" r="3.5" />
+    <path d="M19 24 C19 19 22 17 25 17 C28 17 31 19 31 24" />
+    {/* ילד מרכז */}
+    <circle cx="18" cy="21" r="2.8" />
+    <path d="M13 32 C13 28.5 15 27 18 27 C21 27 23 28.5 23 32" />
+  </svg>
+)
+
 const StomachIcon = () => (
   <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M13 7 C9 7 7 10 7 13 C7 17 8 19 8 22 C8 27 11 29 15 29 C19 29 22 27 24 24 C26 21 27 18 27 15 C27 11 25 9 22 8 C20 7.5 18 8 17 9 C16 10 15 10 14 9.5 C13.5 9 13 8 13 7 Z" />
@@ -49,6 +63,12 @@ const FOLDER_CONFIG: Record<string, FolderConfig> = {
     bg: 'bg-orange-50',
     iconColor: 'text-orange-500',
     border: 'border-orange-100',
+  },
+  'רפואת משפחה': {
+    icon: <FamilyIcon />,
+    bg: 'bg-emerald-50',
+    iconColor: 'text-emerald-600',
+    border: 'border-emerald-100',
   },
   'רפואה פנימית': {
     icon: <Stethoscope size={36} strokeWidth={1.5} />,
