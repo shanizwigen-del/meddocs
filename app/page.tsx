@@ -33,6 +33,7 @@ export default function HomePage() {
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showEmailModal, setShowEmailModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchDocs = useCallback(async () => {
     const res = await fetch('/api/documents')
@@ -46,6 +47,21 @@ export default function HomePage() {
     const t = setTimeout(fetchDocs, 3000)
     return () => clearTimeout(t)
   }, [docs, fetchDocs])
+
+  function selectAll() {
+    setSelected(new Set(docs.map(d => d.id)))
+  }
+
+  async function deleteSelected() {
+    if (!confirm(`למחוק ${selected.size} מסמכים?`)) return
+    setDeleting(true)
+    await Promise.all([...selected].map(id =>
+      fetch(`/api/documents/${id}`, { method: 'DELETE' })
+    ))
+    setSelected(new Set())
+    setDeleting(false)
+    fetchDocs()
+  }
 
   function toggleSelect(id: string) {
     setSelected(prev => {
@@ -98,9 +114,16 @@ export default function HomePage() {
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 pb-28">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-gray-900">המסמכים שלי</h1>
-          <Link href="/upload" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-            + העלה מסמך
-          </Link>
+          <div className="flex items-center gap-2">
+            {docs.length > 0 && (
+              <button onClick={selectAll} className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2">
+                בחר הכל
+              </button>
+            )}
+            <Link href="/upload" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+              + העלה מסמך
+            </Link>
+          </div>
         </div>
 
         <input
@@ -156,7 +179,6 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* כפתור שליחה צף */}
       {selected.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-white border shadow-xl rounded-2xl px-6 py-3">
           <span className="text-sm text-gray-600">{selected.size} נבחרו</span>
@@ -165,6 +187,13 @@ export default function HomePage() {
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
           >
             שלח במייל
+          </button>
+          <button
+            onClick={deleteSelected}
+            disabled={deleting}
+            className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            {deleting ? 'מוחק...' : 'מחק'}
           </button>
           <button
             onClick={() => setSelected(new Set())}
