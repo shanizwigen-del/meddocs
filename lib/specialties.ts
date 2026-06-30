@@ -1,5 +1,7 @@
 export const SPECIALTIES = [
+  { name: 'בריאות הנפש',    color: 'bg-purple-100 text-purple-800' },
   { name: 'פסיכיאטריה',     color: 'bg-purple-100 text-purple-800' },
+  { name: 'פסיכולוגיה',     color: 'bg-purple-100 text-purple-800' },
   { name: 'נוירולוגיה',     color: 'bg-blue-100   text-blue-800'   },
   { name: 'קרדיולוגיה',     color: 'bg-red-100    text-red-800'    },
   { name: 'אורטופדיה',      color: 'bg-orange-100 text-orange-800' },
