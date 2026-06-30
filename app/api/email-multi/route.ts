@@ -10,7 +10,8 @@ export async function POST(req: NextRequest) {
   if (!rows.length) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const attachments = await Promise.all(
-    rows.map(async (doc: { blob_url: string; filename: string }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rows.map(async (doc: any) => {
       const res = await fetch(doc.blob_url)
       const content = Buffer.from(await res.arrayBuffer())
       return { filename: doc.filename, content }
