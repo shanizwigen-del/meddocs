@@ -70,7 +70,7 @@ export default function DocPage() {
           <div className="col-span-3 bg-white rounded-xl border overflow-hidden" style={{ height: 'calc(100vh - 100px)' }}>
             <div className="w-full h-full flex items-center justify-center overflow-hidden">
               <iframe
-                src={doc.blob_url}
+                src={`${doc.blob_url}#toolbar=0&view=FitH`}
                 style={{
                   width: isRotated ? 'calc(100vh - 100px)' : '100%',
                   height: isRotated ? '100%' : 'calc(100vh - 100px)',
