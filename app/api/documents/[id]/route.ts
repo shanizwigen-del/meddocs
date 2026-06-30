@@ -20,11 +20,18 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { page_rotations } = await req.json()
+  const body = await req.json()
 
-  // הוספת עמודה אם לא קיימת (idempotent)
-  await sql`ALTER TABLE documents ADD COLUMN IF NOT EXISTS page_rotations jsonb DEFAULT '{}'`
+  if (body.page_rotations !== undefined) {
+    await sql`ALTER TABLE documents ADD COLUMN IF NOT EXISTS page_rotations jsonb DEFAULT '{}'`
+    await sql`UPDATE documents SET page_rotations = ${JSON.stringify(body.page_rotations)} WHERE id = ${id}`
+  }
 
-  await sql`UPDATE documents SET page_rotations = ${JSON.stringify(page_rotations)} WHERE id = ${id}`
+  if (body.doctor !== undefined || body.hospital !== undefined) {
+    await sql`UPDATE documents SET
+      doctor   = COALESCE(${body.doctor   ?? null}, doctor),
+      hospital = COALESCE(${body.hospital ?? null}, hospital)
+    WHERE id = ${id}`
+  }
   return NextResponse.json({ ok: true })
 }

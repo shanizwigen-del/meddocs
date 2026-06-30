@@ -13,16 +13,24 @@ export interface ExtractedMetadata {
 
 const SPECIALTIES_LIST = 'פסיכיאטריה | נוירולוגיה | קרדיולוגיה | אורטופדיה | רפואה פנימית | גסטרו | אנדוקרינולוגיה | ראומטולוגיה | אלרגיה | עיניים | אא"ג | עור | גינקולוגיה | אונקולוגיה | בדיקות מעבדה | הדמיה | אחר'
 
-const PROMPT = `חלץ מידע ממסמך רפואי זה והחזר JSON בלבד:
+const PROMPT = `חלץ מידע ממסמך רפואי זה והחזר JSON בלבד.
+
+חוקים לחילוץ שם הרופא:
+- חפש "ד"ר", "Dr.", "פרופ'", "Prof.", "הרופא המטפל", "רופא מפנה", "חתימה" — השם שאחריהם הוא שם הרופא
+- חפש שמות עם תואר רפואי (MD, M.D.) — הם שמות רופאים
+- בדוח מרפאה — הרופא הכותב/המאשר הוא הרלוונטי
+- אם יש כמה רופאים — העדף את המטפל הראשי/הכותב
+- אם אין שם רופא ברור — החזר null
+
 {
-  "doc_date": "YYYY-MM-DD או null — תאריך המסמך/הסיכום",
-  "doctor": "שם הרופא המלא או null",
-  "hospital": "שם בית החולים/מרפאה או null",
+  "doc_date": "YYYY-MM-DD או null — תאריך המסמך/הסיכום/הביקור",
+  "doctor": "שם הרופא בלבד ללא תואר (לדוגמה: כהן דוד) או null",
+  "hospital": "שם בית החולים/מרפאה/קופת חולים או null",
   "specialty": "אחד מ: ${SPECIALTIES_LIST}",
   "summary": "",
   "keywords": []
 }
-החזר JSON בלבד.`
+החזר JSON בלבד. אין הסברים.`
 
 export async function extractMetadata(pdfBuffer: Buffer): Promise<ExtractedMetadata> {
   const base64 = pdfBuffer.toString('base64')

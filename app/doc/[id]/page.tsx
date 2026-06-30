@@ -24,6 +24,18 @@ export default function DocPage() {
   const [doc, setDoc] = useState<Doc | null>(null)
   const [showEmail, setShowEmail] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [editingDoctor, setEditingDoctor] = useState(false)
+  const [doctorInput, setDoctorInput] = useState('')
+
+  async function saveDoctor() {
+    await fetch(`/api/documents/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ doctor: doctorInput || null }),
+    })
+    setDoc(d => d ? { ...d, doctor: doctorInput || null } : d)
+    setEditingDoctor(false)
+  }
 
   async function handleDelete() {
     if (!confirm('למחוק את המסמך לצמיתות?')) return
@@ -69,8 +81,34 @@ export default function DocPage() {
 
           <div className="bg-white rounded-xl border p-4 space-y-3 text-sm overflow-y-auto">
             {doc.specialty && <SpecialtyChip name={doc.specialty} />}
-            {dateStr    && <div><span className="text-gray-400">תאריך: </span>{dateStr}</div>}
-            {doc.doctor && <div><span className="text-gray-400">רופא: </span>ד&quot;ר {doc.doctor}</div>}
+            {dateStr && <div><span className="text-gray-400">תאריך: </span>{dateStr}</div>}
+
+            <div>
+              <span className="text-gray-400">רופא: </span>
+              {editingDoctor ? (
+                <span className="flex gap-1 mt-1">
+                  <input
+                    autoFocus
+                    value={doctorInput}
+                    onChange={e => setDoctorInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && saveDoctor()}
+                    placeholder="שם הרופא"
+                    className="border rounded px-2 py-0.5 text-xs flex-1"
+                  />
+                  <button onClick={saveDoctor} className="text-blue-600 text-xs">שמור</button>
+                  <button onClick={() => setEditingDoctor(false)} className="text-gray-400 text-xs">ביטול</button>
+                </span>
+              ) : (
+                <span
+                  onClick={() => { setDoctorInput(doc.doctor ?? ''); setEditingDoctor(true) }}
+                  className="cursor-pointer hover:underline"
+                  title="לחץ לעריכה"
+                >
+                  {doc.doctor ? `ד"ר ${doc.doctor}` : <span className="text-gray-300 italic">לא זוהה — לחץ להוספה</span>}
+                </span>
+              )}
+            </div>
+
             {doc.hospital && <div><span className="text-gray-400">מוסד: </span>{doc.hospital}</div>}
             {doc.keywords && doc.keywords.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-1">
