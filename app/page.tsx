@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { DocumentCard } from '@/components/DocumentCard'
-import { SearchFilters } from '@/components/SearchFilters'
+import { getSpecialtyColor } from '@/lib/specialties'
 
 interface Doc {
   id: string
@@ -15,18 +15,35 @@ interface Doc {
   status: string
 }
 
+const FOLDER_ICONS: Record<string, string> = {
+  'פסיכיאטריה': '🧠',
+  'נוירולוגיה': '🧬',
+  'קרדיולוגיה': '❤️',
+  'אורטופדיה': '🦴',
+  'רפואה פנימית': '🩺',
+  'גסטרו': '🫁',
+  'אנדוקרינולוגיה': '⚗️',
+  'ראומטולוגיה': '🔬',
+  'אלרגיה': '🌿',
+  'עיניים': '👁️',
+  'אא"ג': '👂',
+  'עור': '🩹',
+  'גינקולוגיה': '🌸',
+  'אונקולוגיה': '🎗️',
+  'בדיקות מעבדה': '🧪',
+  'הדמיה': '📷',
+  'אחר': '📁',
+}
+
 export default function HomePage() {
   const [docs, setDocs] = useState<Doc[]>([])
-  const [filters, setFilters] = useState({ q: '', specialty: '', year: '' })
+  const [openFolder, setOpenFolder] = useState<string | null>(null)
+  const [q, setQ] = useState('')
 
   const fetchDocs = useCallback(async () => {
-    const params = new URLSearchParams()
-    if (filters.q)         params.set('q', filters.q)
-    if (filters.specialty) params.set('specialty', filters.specialty)
-    if (filters.year)      params.set('year', filters.year)
-    const res = await fetch('/api/documents?' + params)
+    const res = await fetch('/api/documents')
     setDocs(await res.json())
-  }, [filters])
+  }, [])
 
   useEffect(() => { fetchDocs() }, [fetchDocs])
 
@@ -36,9 +53,24 @@ export default function HomePage() {
     return () => clearTimeout(t)
   }, [docs, fetchDocs])
 
-  function setFilter(key: string, value: string) {
-    setFilters(f => ({ ...f, [key]: value }))
-  }
+  // קיבוץ לפי תחום
+  const folders = docs.reduce<Record<string, Doc[]>>((acc, doc) => {
+    const key = doc.specialty ?? 'אחר'
+    if (!acc[key]) acc[key] = []
+    acc[key].push(doc)
+    return acc
+  }, {})
+
+  // חיפוש חופשי - מציג את כל המסמכים המתאימים
+  const searchResults = q
+    ? docs.filter(d =>
+        d.doctor?.includes(q) ||
+        d.hospital?.includes(q) ||
+        d.specialty?.includes(q) ||
+        d.filename.includes(q) ||
+        d.summary?.includes(q)
+      )
+    : []
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
@@ -49,13 +81,68 @@ export default function HomePage() {
             + העלה מסמך
           </Link>
         </div>
-        <SearchFilters {...filters} onChange={setFilter} />
-        <div className="grid gap-3">
-          {docs.length === 0 && (
-            <p className="text-center text-gray-400 py-12">אין מסמכים עדיין</p>
-          )}
-          {docs.map(doc => <DocumentCard key={doc.id} doc={doc} />)}
-        </div>
+
+        {/* חיפוש */}
+        <input
+          type="text"
+          placeholder="חיפוש לפי רופא, מוסד, תחום..."
+          value={q}
+          onChange={e => { setQ(e.target.value); setOpenFolder(null) }}
+          className="w-full border rounded-lg px-4 py-2 text-sm bg-white"
+        />
+
+        {/* תוצאות חיפוש */}
+        {q && (
+          <div className="space-y-2">
+            <p className="text-sm text-gray-500">{searchResults.length} תוצאות</p>
+            {searchResults.map(doc => <DocumentCard key={doc.id} doc={doc} />)}
+          </div>
+        )}
+
+        {/* תיקיות */}
+        {!q && (
+          <div className="space-y-3">
+            {Object.keys(folders).length === 0 && (
+              <p className="text-center text-gray-400 py-12">אין מסמכים עדיין</p>
+            )}
+            {Object.entries(folders)
+              .sort((a, b) => b[1].length - a[1].length)
+              .map(([specialty, items]) => {
+                const isOpen = openFolder === specialty
+                const colorClass = getSpecialtyColor(specialty)
+                const icon = FOLDER_ICONS[specialty] ?? '📁'
+                return (
+                  <div key={specialty} className="bg-white rounded-xl border overflow-hidden">
+                    <button
+                      onClick={() => setOpenFolder(isOpen ? null : specialty)}
+                      className="w-full flex items-center justify-between px-4 py-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{icon}</span>
+                        <span className="font-medium text-gray-900">{specialty}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${colorClass}`}>
+                          {items.length} מסמכים
+                        </span>
+                      </div>
+                      <span className="text-gray-400 text-lg">{isOpen ? '▲' : '▼'}</span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="border-t divide-y">
+                        {items
+                          .sort((a, b) => (b.doc_date ?? '').localeCompare(a.doc_date ?? ''))
+                          .map(doc => (
+                            <div key={doc.id} className="px-4 py-1">
+                              <DocumentCard doc={doc} />
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+          </div>
+        )}
       </div>
     </div>
   )
