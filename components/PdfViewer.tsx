@@ -36,13 +36,14 @@ export function PdfViewer({ url }: { url: string }) {
               >
                 ↻ סובב עמוד {pageNum}
               </button>
-              <Page
-                pageNumber={pageNum}
-                rotate={rot}
-                width={rot % 180 !== 0 ? undefined : containerWidth}
-                height={rot % 180 !== 0 ? containerWidth : undefined}
-                className="shadow-md mx-auto block"
-              />
+              <div className="flex justify-center">
+                <Page
+                  pageNumber={pageNum}
+                  rotate={rot}
+                  width={containerWidth}
+                  className="shadow-md"
+                />
+              </div>
             </div>
           )
         })}
