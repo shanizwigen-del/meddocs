@@ -37,7 +37,7 @@ export async function extractMetadata(fileBuffer: Buffer, mimeType = 'applicatio
   const isImage = mimeType.startsWith('image/')
 
   const fileContent = isImage
-    ? { type: 'input_image' as const, image_url: `data:${mimeType};base64,${base64}` }
+    ? { type: 'input_image' as const, image_url: `data:${mimeType};base64,${base64}`, detail: 'auto' as const }
     : { type: 'input_file' as const, filename: 'document.pdf', file_data: `data:application/pdf;base64,${base64}` }
 
   const response = await client.responses.create({
