@@ -1,4 +1,5 @@
 import { put } from '@vercel/blob'
+import { waitUntil } from '@vercel/functions'
 import { sql } from '@/lib/db'
 import { extractMetadata } from '@/lib/claude'
 import { NextRequest, NextResponse } from 'next/server'
@@ -17,7 +18,8 @@ export async function POST(req: NextRequest) {
   `
   const id = rows[0].id
 
-  processDocument(id, blob.url).catch(console.error)
+  // waitUntil שומר את הפונקציה חיה עד שהעיבוד מסתיים
+  waitUntil(processDocument(id, blob.url))
 
   return NextResponse.json({ id })
 }
@@ -39,7 +41,8 @@ async function processDocument(id: string, blobUrl: string) {
         status    = 'ready'
       WHERE id = ${id}
     `
-  } catch {
+  } catch (e) {
+    console.error('processDocument error:', e)
     await sql`UPDATE documents SET status = 'error' WHERE id = ${id}`
   }
 }
