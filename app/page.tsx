@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { DocumentCard } from '@/components/DocumentCard'
 import { MultiEmailModal } from '@/components/MultiEmailModal'
-import { getSpecialtyColor } from '@/lib/specialties'
+import { FolderCard } from '@/components/FolderGrid'
 
 interface Doc {
   id: string
@@ -16,26 +16,6 @@ interface Doc {
   status: string
 }
 
-const FOLDER_ICONS: Record<string, string> = {
-  'פסיכיאטריה': '🧠',
-  'בריאות הנפש': '🧠',
-  'נוירולוגיה': '🧬',
-  'קרדיולוגיה': '❤️',
-  'אורטופדיה': '🦴',
-  'רפואה פנימית': '🩺',
-  'גסטרו': '🫁',
-  'אנדוקרינולוגיה': '⚗️',
-  'ראומטולוגיה': '🔬',
-  'אלרגיה': '🌿',
-  'עיניים': '👁️',
-  'אא"ג': '👂',
-  'עור': '🩹',
-  'גינקולוגיה': '🌸',
-  'אונקולוגיה': '🎗️',
-  'בדיקות מעבדה': '🧪',
-  'הדמיה': '📷',
-  'אחר': '📁',
-}
 
 const FOLDER_MAP: Record<string, string> = {
   'פסיכיאטריה': 'בריאות הנפש',
@@ -139,42 +119,39 @@ export default function HomePage() {
         )}
 
         {!q && (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {Object.keys(folders).length === 0 && (
               <p className="text-center text-gray-400 py-12">אין מסמכים עדיין</p>
             )}
-            {Object.entries(folders)
-              .sort((a, b) => b[1].length - a[1].length)
-              .map(([specialty, items]) => {
-                const isOpen = openFolder === specialty
-                const colorClass = getSpecialtyColor(specialty)
-                const icon = FOLDER_ICONS[specialty] ?? '📁'
-                return (
-                  <div key={specialty} className="bg-white rounded-xl border overflow-hidden">
-                    <button
-                      onClick={() => setOpenFolder(isOpen ? null : specialty)}
-                      className="w-full flex items-center justify-between px-4 py-4 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{icon}</span>
-                        <span className="font-medium text-gray-900">{specialty}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${colorClass}`}>
-                          {items.length} מסמכים
-                        </span>
-                      </div>
-                      <span className="text-gray-400 text-lg">{isOpen ? '▲' : '▼'}</span>
-                    </button>
 
-                    {isOpen && (
-                      <div className="border-t divide-y">
-                        {items
-                          .sort((a, b) => (b.doc_date ?? '').localeCompare(a.doc_date ?? ''))
-                          .map(doc => renderDoc(doc))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+            {/* גריד תיקיות */}
+            <div className="grid grid-cols-3 gap-4">
+              {Object.entries(folders)
+                .sort((a, b) => b[1].length - a[1].length)
+                .map(([specialty, items]) => (
+                  <FolderCard
+                    key={specialty}
+                    specialty={specialty}
+                    count={items.length}
+                    isOpen={openFolder === specialty}
+                    onClick={() => setOpenFolder(openFolder === specialty ? null : specialty)}
+                  />
+                ))}
+            </div>
+
+            {/* תוכן תיקייה פתוחה */}
+            {openFolder && folders[openFolder] && (
+              <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b bg-gray-50 text-sm font-medium text-gray-700">
+                  {openFolder}
+                </div>
+                <div className="divide-y">
+                  {folders[openFolder]
+                    .sort((a, b) => (b.doc_date ?? '').localeCompare(a.doc_date ?? ''))
+                    .map(doc => renderDoc(doc))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
