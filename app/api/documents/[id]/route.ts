@@ -27,10 +27,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await sql`UPDATE documents SET page_rotations = ${JSON.stringify(body.page_rotations)} WHERE id = ${id}`
   }
 
-  if (body.doctor !== undefined || body.hospital !== undefined) {
+  if (body.doctor !== undefined || body.hospital !== undefined || body.specialty !== undefined) {
     await sql`UPDATE documents SET
-      doctor   = COALESCE(${body.doctor   ?? null}, doctor),
-      hospital = COALESCE(${body.hospital ?? null}, hospital)
+      doctor    = CASE WHEN ${body.doctor    !== undefined} THEN ${body.doctor    ?? null} ELSE doctor    END,
+      hospital  = CASE WHEN ${body.hospital  !== undefined} THEN ${body.hospital  ?? null} ELSE hospital  END,
+      specialty = CASE WHEN ${body.specialty !== undefined} THEN ${body.specialty ?? null} ELSE specialty END
     WHERE id = ${id}`
   }
   return NextResponse.json({ ok: true })

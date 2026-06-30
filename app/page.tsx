@@ -56,6 +56,12 @@ export default function HomePage() {
 
   const FOLDER_MAP: Record<string, string> = {
     'פסיכיאטריה': 'בריאות הנפש',
+    'פסיכולוגיה': 'בריאות הנפש',
+    'בריאות נפש': 'בריאות הנפש',
+    'נפשי': 'בריאות הנפש',
+    'psychiatry': 'בריאות הנפש',
+    'psychology': 'בריאות הנפש',
+    'mental health': 'בריאות הנפש',
   }
 
   // קיבוץ לפי תחום

@@ -26,6 +26,8 @@ export default function DocPage() {
   const [deleting, setDeleting] = useState(false)
   const [editingDoctor, setEditingDoctor] = useState(false)
   const [doctorInput, setDoctorInput] = useState('')
+  const [editingSpecialty, setEditingSpecialty] = useState(false)
+  const [specialtyInput, setSpecialtyInput] = useState('')
 
   async function saveDoctor() {
     await fetch(`/api/documents/${id}`, {
@@ -35,6 +37,16 @@ export default function DocPage() {
     })
     setDoc(d => d ? { ...d, doctor: doctorInput || null } : d)
     setEditingDoctor(false)
+  }
+
+  async function saveSpecialty() {
+    await fetch(`/api/documents/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ specialty: specialtyInput || null }),
+    })
+    setDoc(d => d ? { ...d, specialty: specialtyInput || null } : d)
+    setEditingSpecialty(false)
   }
 
   async function handleDelete() {
@@ -80,7 +92,24 @@ export default function DocPage() {
           </div>
 
           <div className="bg-white rounded-xl border p-4 space-y-3 text-sm overflow-y-auto">
-            {doc.specialty && <SpecialtyChip name={doc.specialty} />}
+            {editingSpecialty ? (
+              <span className="flex gap-1">
+                <input
+                  autoFocus
+                  value={specialtyInput}
+                  onChange={e => setSpecialtyInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && saveSpecialty()}
+                  placeholder="תחום (לדוגמה: פסיכיאטריה)"
+                  className="border rounded px-2 py-0.5 text-xs flex-1"
+                />
+                <button onClick={saveSpecialty} className="text-blue-600 text-xs">שמור</button>
+                <button onClick={() => setEditingSpecialty(false)} className="text-gray-400 text-xs">ביטול</button>
+              </span>
+            ) : (
+              <span onClick={() => { setSpecialtyInput(doc.specialty ?? ''); setEditingSpecialty(true) }} className="cursor-pointer" title="לחץ לעריכה">
+                {doc.specialty ? <SpecialtyChip name={doc.specialty} /> : <span className="text-gray-300 italic text-xs">לחץ להוספת תחום</span>}
+              </span>
+            )}
             {dateStr && <div><span className="text-gray-400">תאריך: </span>{dateStr}</div>}
 
             <div>
