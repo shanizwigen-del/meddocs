@@ -64,7 +64,8 @@ export function PdfViewer({ url, docId, initialRotations }: {
                 <Page
                   pageNumber={pageNum}
                   rotate={rot}
-                  width={containerWidth}
+                  width={rot % 180 !== 0 ? undefined : containerWidth}
+                  height={rot % 180 !== 0 ? containerWidth : undefined}
                   className="shadow-md"
                 />
               </div>
