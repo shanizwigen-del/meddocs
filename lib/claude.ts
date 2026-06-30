@@ -13,47 +13,63 @@ export interface ExtractedMetadata {
 
 const SPECIALTIES_LIST = 'בריאות הנפש | פסיכיאטריה | פסיכולוגיה | נוירולוגיה | קרדיולוגיה | אורטופדיה | רפואה פנימית | גסטרו | אנדוקרינולוגיה | ראומטולוגיה | אלרגיה | עיניים | אא"ג | עור | גינקולוגיה | אונקולוגיה | בדיקות מעבדה | הדמיה | אחר'
 
-const PROMPT = `חלץ מידע ממסמך רפואי זה והחזר JSON בלבד.
+const PROMPT = `אתה מנתח מסמכים רפואיים. חלץ מידע מהמסמך המצורף.
 
-חוקים לחילוץ שם הרופא:
-- חפש "ד"ר", "Dr.", "פרופ'", "Prof.", "הרופא המטפל", "רופא מפנה", "חתימה" — השם שאחריהם הוא שם הרופא
-- חפש שמות עם תואר רפואי (MD, M.D.) — הם שמות רופאים
-- בדוח מרפאה — הרופא הכותב/המאשר הוא הרלוונטי
-- אם יש כמה רופאים — העדף את המטפל הראשי/הכותב
-- אם אין שם רופא ברור — החזר null
+חוקים:
+- שם רופא: חפש "ד"ר", "Dr.", "פרופ'", חתימה — שם בלי תואר. אם אין — null
+- תחום רפואי: בחר מהרשימה המדויקת בהתאם לתוכן (גם אם המסמך חלקי או ריק)
+- תאריך: YYYY-MM-DD או null
 
+החזר JSON בלבד, ללא הסברים:
 {
-  "doc_date": "YYYY-MM-DD או null — תאריך המסמך/הסיכום/הביקור",
-  "doctor": "שם הרופא בלבד ללא תואר (לדוגמה: כהן דוד) או null",
-  "hospital": "שם בית החולים/מרפאה/קופת חולים או null",
-  "specialty": "אחד מ: ${SPECIALTIES_LIST}",
+  "doc_date": "YYYY-MM-DD או null",
+  "doctor": "שם בלבד או null",
+  "hospital": "שם מוסד או null",
+  "specialty": "בחר אחד מ: ${SPECIALTIES_LIST}",
   "summary": "",
   "keywords": []
-}
-החזר JSON בלבד. אין הסברים.`
+}`
 
 export async function extractMetadata(fileBuffer: Buffer, mimeType = 'application/pdf'): Promise<ExtractedMetadata> {
-  const base64 = fileBuffer.toString('base64')
-  const isImage = mimeType.startsWith('image/')
+  const fallback: ExtractedMetadata = {
+    doc_date: null, doctor: null, hospital: null,
+    specialty: 'אחר', summary: '', keywords: [],
+  }
 
-  const fileContent = isImage
-    ? { type: 'input_image' as const, image_url: `data:${mimeType};base64,${base64}`, detail: 'auto' as const }
-    : { type: 'input_file' as const, filename: 'document.pdf', file_data: `data:application/pdf;base64,${base64}` }
+  try {
+    const base64 = fileBuffer.toString('base64')
+    const isImage = mimeType.startsWith('image/')
 
-  const response = await client.responses.create({
-    model: 'gpt-4o-mini',
-    input: [
-      {
+    const fileContent = isImage
+      ? { type: 'input_image' as const, image_url: `data:${mimeType};base64,${base64}`, detail: 'auto' as const }
+      : { type: 'input_file' as const, filename: 'document.pdf', file_data: `data:application/pdf;base64,${base64}` }
+
+    const response = await client.responses.create({
+      model: 'gpt-4o-mini',
+      input: [{
         role: 'user',
         content: [
           fileContent,
           { type: 'input_text', text: PROMPT },
         ],
-      },
-    ],
-  })
+      }],
+    })
 
-  const text = response.output_text ?? '{}'
-  const clean = text.replace(/```json\n?|\n?```/g, '').trim()
-  return JSON.parse(clean)
+    const text = response.output_text ?? ''
+    const clean = text.replace(/```json\n?|\n?```/g, '').trim()
+    if (!clean) return fallback
+
+    const parsed = JSON.parse(clean)
+    return {
+      doc_date: parsed.doc_date ?? null,
+      doctor: parsed.doctor ?? null,
+      hospital: parsed.hospital ?? null,
+      specialty: parsed.specialty ?? 'אחר',
+      summary: parsed.summary ?? '',
+      keywords: parsed.keywords ?? [],
+    }
+  } catch (e) {
+    console.error('extractMetadata error:', e)
+    return fallback
+  }
 }
