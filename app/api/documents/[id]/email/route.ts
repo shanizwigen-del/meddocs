@@ -13,16 +13,28 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const pdfRes = await fetch(doc.blob_url)
   const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer())
 
-  // שם השולח — שם הרופא אם קיים, אחרת שם כללי
-  const senderName = doc.doctor ? `ד"ר ${doc.doctor}` : 'מערכת מסמכים רפואית'
+  const senderName = process.env.SENDER_NAME ?? 'מערכת מסמכים רפואית'
   const fromAddress = process.env.FROM_EMAIL ?? 'onboarding@resend.dev'
   const from = `${senderName} <${fromAddress}>`
+
+  const bodyText = message || `היי,\n\nמצרפת את המסמכים הרלוונטים.\n\nתודה\n${senderName}`
+
+  const html = `
+    <div dir="rtl" style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+      <p style="font-size: 16px;">היי,</p>
+      <p style="font-size: 16px;">${message ? message.replace(/\n/g, '<br>') : 'מצרפת את המסמכים הרלוונטים.'}</p>
+      <br>
+      <p style="font-size: 16px;">תודה</p>
+      <p style="font-size: 16px; font-weight: bold;">${senderName}</p>
+    </div>
+  `
 
   const { error } = await resend.emails.send({
     from,
     to,
-    subject: subject || `מסמך רפואי: ${doc.specialty ?? ''} - ${doc.doc_date ?? ''}`,
-    text: message || `שלום,\n\nמצורף מסמך רפואי: ${doc.filename}\n\n${senderName}`,
+    subject: subject || `מסמכים רפואיים`,
+    text: bodyText,
+    html,
     attachments: [{ filename: doc.filename, content: pdfBuffer }],
   })
 
