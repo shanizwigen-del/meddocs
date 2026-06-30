@@ -22,16 +22,16 @@ export async function POST(req: NextRequest) {
   const id = rows[0].id
 
   // waitUntil שומר את הפונקציה חיה עד שהעיבוד מסתיים
-  waitUntil(processDocument(id, blob.url))
+  waitUntil(processDocument(id, blob.url, file.type))
 
   return NextResponse.json({ id })
 }
 
-async function processDocument(id: string, blobUrl: string) {
+async function processDocument(id: string, blobUrl: string, mimeType = 'application/pdf') {
   try {
     const res = await fetch(blobUrl)
     const buffer = Buffer.from(await res.arrayBuffer())
-    const metadata = await extractMetadata(buffer)
+    const metadata = await extractMetadata(buffer, mimeType)
 
     await sql`
       UPDATE documents SET

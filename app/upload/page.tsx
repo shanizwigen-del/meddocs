@@ -12,13 +12,16 @@ export default function UploadPage() {
   const [files, setFiles] = useState<FileStatus[]>([])
   const [running, setRunning] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
   function addFiles(newFiles: FileList | null) {
     if (!newFiles) return
-    const pdfs = Array.from(newFiles).filter(f => f.type.includes('pdf'))
-    if (pdfs.length === 0) return alert('רק קבצי PDF')
-    setFiles(prev => [...prev, ...pdfs.map(f => ({ file: f, status: 'waiting' as const }))])
+    const valid = Array.from(newFiles).filter(f =>
+      f.type.includes('pdf') || f.type.startsWith('image/')
+    )
+    if (valid.length === 0) return alert('PDF או תמונה בלבד')
+    setFiles(prev => [...prev, ...valid.map(f => ({ file: f, status: 'waiting' as const }))])
   }
 
   async function uploadAll() {
@@ -58,14 +61,19 @@ export default function UploadPage() {
           <p className="text-sm text-gray-400 mt-1">אפשר כמה קבצים בבת אחת</p>
         </div>
 
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".pdf"
-          multiple
-          className="hidden"
-          onChange={e => addFiles(e.target.files)}
-        />
+        {/* כפתור צילום למובייל */}
+        <button
+          onClick={() => cameraRef.current?.click()}
+          className="w-full border-2 border-dashed border-blue-200 rounded-2xl p-6 text-center bg-blue-50 hover:bg-blue-100 transition-colors"
+        >
+          <p className="text-blue-600 font-medium">📷 צלם מסמך</p>
+          <p className="text-xs text-blue-400 mt-1">פתח מצלמה וצלם ישירות</p>
+        </button>
+
+        <input ref={fileRef} type="file" accept=".pdf,image/*" multiple className="hidden"
+          onChange={e => addFiles(e.target.files)} />
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+          onChange={e => addFiles(e.target.files)} />
 
         {files.length > 0 && (
           <div className="bg-white border rounded-xl divide-y">
