@@ -5,13 +5,18 @@ import { useRouter } from 'next/navigation'
 interface FileStatus {
   file: File
   status: 'waiting' | 'uploading' | 'done' | 'error'
+  result?: string
 }
 
 export default function UploadPage() {
   const [dragging, setDragging] = useState(false)
   const [files, setFiles] = useState<FileStatus[]>([])
   const [running, setRunning] = useState(false)
+  const [splitFile, setSplitFile] = useState<File | null>(null)
+  const [splitting, setSplitting] = useState(false)
+  const [splitResult, setSplitResult] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const splitRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -41,6 +46,26 @@ export default function UploadPage() {
     setRunning(false)
   }
 
+  async function splitAndUpload() {
+    if (!splitFile) return
+    setSplitting(true)
+    setSplitResult(null)
+    try {
+      const form = new FormData()
+      form.append('file', splitFile)
+      const res = await fetch('/api/split', { method: 'POST', body: form })
+      const data = await res.json()
+      if (res.ok) {
+        setSplitResult(`זוהו ${data.count} מסמכים מתוך ${data.pages} עמודים — מעובד ברקע`)
+      } else {
+        setSplitResult('שגיאה בעיבוד')
+      }
+    } catch {
+      setSplitResult('שגיאת רשת')
+    }
+    setSplitting(false)
+  }
+
   const allDone = files.length > 0 && files.every(f => f.status === 'done')
 
   return (
@@ -48,23 +73,58 @@ export default function UploadPage() {
       <div className="max-w-lg w-full px-4 space-y-4">
         <h1 className="text-2xl font-semibold text-center">העלאת מסמכים</h1>
 
+        {/* פיצול PDF גדול */}
+        <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 space-y-3">
+          <p className="font-medium text-amber-800">📦 PDF עם מספר מסמכים</p>
+          <p className="text-sm text-amber-700">העלי PDF שלם מהסורק — המערכת תזהה ותפרק אוטומטית לפי מסמכים</p>
+          {splitFile ? (
+            <div className="space-y-2">
+              <p className="text-sm text-gray-700 truncate">📄 {splitFile.name}</p>
+              {splitResult ? (
+                <p className="text-sm text-green-700 font-medium">{splitResult}</p>
+              ) : (
+                <button
+                  onClick={splitAndUpload}
+                  disabled={splitting}
+                  className="w-full bg-amber-500 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+                >
+                  {splitting ? 'מנתח ומפרק...' : 'פרק וזהה מסמכים'}
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => splitRef.current?.click()}
+              className="w-full border border-amber-300 bg-white rounded-lg py-2 text-sm text-amber-700 hover:bg-amber-50"
+            >
+              בחרי PDF לפיצול
+            </button>
+          )}
+          <input ref={splitRef} type="file" accept=".pdf" className="hidden"
+            onChange={e => { if (e.target.files?.[0]) setSplitFile(e.target.files[0]) }} />
+        </div>
+
+        <div className="flex items-center gap-3 text-gray-400 text-sm">
+          <div className="flex-1 border-t" /><span>או</span><div className="flex-1 border-t" />
+        </div>
+
+        {/* העלאה רגילה */}
         <div
           onDragOver={e => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
           onDrop={e => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files) }}
           onClick={() => fileRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-colors ${
+          className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-colors ${
             dragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
           }`}
         >
-          <p className="text-gray-500">גרור קבצי PDF לכאן</p>
-          <p className="text-sm text-gray-400 mt-1">אפשר כמה קבצים בבת אחת</p>
+          <p className="text-gray-500">קבצים בודדים — PDF או תמונה</p>
+          <p className="text-sm text-gray-400 mt-1">גרור או לחץ לבחירה</p>
         </div>
 
-        {/* כפתור צילום למובייל */}
         <button
           onClick={() => cameraRef.current?.click()}
-          className="w-full border-2 border-dashed border-blue-200 rounded-2xl p-6 text-center bg-blue-50 hover:bg-blue-100 transition-colors"
+          className="w-full border-2 border-dashed border-blue-200 rounded-2xl p-5 text-center bg-blue-50 hover:bg-blue-100 transition-colors"
         >
           <p className="text-blue-600 font-medium">📷 צלם מסמך</p>
           <p className="text-xs text-blue-400 mt-1">פתח מצלמה וצלם ישירות</p>
@@ -92,20 +152,15 @@ export default function UploadPage() {
         )}
 
         {files.length > 0 && !allDone && (
-          <button
-            onClick={uploadAll}
-            disabled={running}
-            className="w-full bg-blue-600 text-white rounded-lg py-2 font-medium disabled:opacity-50"
-          >
+          <button onClick={uploadAll} disabled={running}
+            className="w-full bg-blue-600 text-white rounded-lg py-2 font-medium disabled:opacity-50">
             {running ? 'מעלה...' : `העלה ${files.length} קבצים`}
           </button>
         )}
 
-        {allDone && (
-          <button
-            onClick={() => router.push('/')}
-            className="w-full bg-green-600 text-white rounded-lg py-2 font-medium"
-          >
+        {(allDone || splitResult) && (
+          <button onClick={() => router.push('/')}
+            className="w-full bg-green-600 text-white rounded-lg py-2 font-medium">
             סיים - חזרה לרשימה
           </button>
         )}
