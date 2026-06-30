@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { SpecialtyChip } from '@/components/SpecialtyChip'
 import { EmailModal } from '@/components/EmailModal'
+import { PdfViewer } from '@/components/PdfViewer'
 
 interface Doc {
   id: string
@@ -12,7 +13,6 @@ interface Doc {
   doctor: string | null
   hospital: string | null
   specialty: string | null
-  summary: string | null
   keywords: string[] | null
   status: string
 }
@@ -22,7 +22,6 @@ export default function DocPage() {
   const router = useRouter()
   const [doc, setDoc] = useState<Doc | null>(null)
   const [showEmail, setShowEmail] = useState(false)
-  const [rotation, setRotation] = useState(0)
 
   useEffect(() => {
     fetch(`/api/documents/${id}`).then(r => r.json()).then(setDoc)
@@ -33,7 +32,6 @@ export default function DocPage() {
   )
 
   const dateStr = doc.doc_date ? new Date(doc.doc_date).toLocaleDateString('he-IL') : null
-  const isRotated = rotation % 180 !== 0
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
@@ -43,50 +41,25 @@ export default function DocPage() {
             ← חזרה
           </button>
           <div className="flex gap-2">
-            <button
-              onClick={() => setRotation(r => (r + 90) % 360)}
-              className="border px-3 py-2 rounded-lg text-sm hover:bg-gray-50"
-              title="סובב"
-            >
-              ↻ סובב
-            </button>
-            <button
-              onClick={() => setShowEmail(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
-            >
+            <button onClick={() => setShowEmail(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
               שלח במייל
             </button>
-            <a
-              href={doc.blob_url}
-              download={doc.filename}
-              className="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50"
-            >
+            <a href={doc.blob_url} download={doc.filename} className="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
               הורד
             </a>
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-4">
-          <div className="col-span-3 bg-white rounded-xl border overflow-hidden" style={{ height: 'calc(100vh - 100px)' }}>
-            <div className="w-full h-full flex items-center justify-center overflow-hidden">
-              <iframe
-                src={`${doc.blob_url}#toolbar=0&zoom=page-width`}
-                style={{
-                  width: isRotated ? 'calc(100vh - 100px)' : '100%',
-                  height: isRotated ? '100%' : 'calc(100vh - 100px)',
-                  transform: `rotate(${rotation}deg)`,
-                  transition: 'transform 0.3s ease',
-                  border: 'none',
-                }}
-              />
-            </div>
+        <div className="grid grid-cols-4 gap-4" style={{ height: 'calc(100vh - 90px)' }}>
+          <div className="col-span-3 rounded-xl overflow-hidden border">
+            <PdfViewer url={doc.blob_url} />
           </div>
 
-          <div className="bg-white rounded-xl border p-4 space-y-3 text-sm">
+          <div className="bg-white rounded-xl border p-4 space-y-3 text-sm overflow-y-auto">
             {doc.specialty && <SpecialtyChip name={doc.specialty} />}
-            {dateStr       && <div><span className="text-gray-400">תאריך: </span>{dateStr}</div>}
-            {doc.doctor    && <div><span className="text-gray-400">רופא: </span>ד&quot;ר {doc.doctor}</div>}
-            {doc.hospital  && <div><span className="text-gray-400">מוסד: </span>{doc.hospital}</div>}
+            {dateStr    && <div><span className="text-gray-400">תאריך: </span>{dateStr}</div>}
+            {doc.doctor && <div><span className="text-gray-400">רופא: </span>ד&quot;ר {doc.doctor}</div>}
+            {doc.hospital && <div><span className="text-gray-400">מוסד: </span>{doc.hospital}</div>}
             {doc.keywords && doc.keywords.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-1">
                 {doc.keywords.map((k: string) => (
@@ -97,6 +70,7 @@ export default function DocPage() {
             {doc.status === 'processing' && (
               <p className="text-blue-500 text-xs animate-pulse">מעבד מסמך...</p>
             )}
+            <p className="text-gray-400 text-xs pt-2">העבר עכבר על עמוד לסיבובו</p>
           </div>
         </div>
       </div>
