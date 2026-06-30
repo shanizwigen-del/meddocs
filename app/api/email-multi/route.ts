@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   const { error } = await resend.emails.send({
     from: `${SENDER_NAME} <${fromAddress}>`,
     to,
-    reply_to: REPLY_TO,
+    replyTo: REPLY_TO,
     subject: subject || 'מסמכים רפואיים',
     text: `היי,\n\n${body}\n\nתודה,\n${SENDER_NAME}\nנייד: ${PHONE}\nמייל: ${REPLY_TO}`,
     html: buildHtml(body, SENDER_NAME),
