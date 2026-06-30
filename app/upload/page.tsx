@@ -50,60 +50,24 @@ export default function UploadPage() {
     if (!splitFile) return
     setSplitting(true)
     setSplitResult(null)
-    setSplitProgress('')
+    setSplitProgress('טוען...')
 
     try {
-      const arrayBuffer = await splitFile.arrayBuffer()
-      const uint8 = new Uint8Array(arrayBuffer)
-
-      // שלב 1: טעינת pdfjs עם worker מקומי
-      setSplitProgress('טוען מנוע PDF...')
-      const pdfjsLib = await import('pdfjs-dist')
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
-      const pdf = await pdfjsLib.getDocument({ data: uint8 }).promise
-      const numPages = pdf.numPages
-
-      // שלב 2: רינדור כל עמוד כ-thumbnail JPEG (100px רוחב)
-      setSplitProgress(`מעבד ${numPages} עמודים...`)
-      const thumbnails: string[] = []
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')!
-
-      for (let i = 1; i <= numPages; i++) {
-        const page = await pdf.getPage(i)
-        const viewport = page.getViewport({ scale: 0.15 })
-        canvas.width = viewport.width
-        canvas.height = viewport.height
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await page.render({ canvasContext: ctx as any, viewport, canvas }).promise
-        const jpeg = canvas.toDataURL('image/jpeg', 0.5).replace('data:image/jpeg;base64,', '')
-        thumbnails.push(jpeg)
-      }
-
-      // שלב 3: זיהוי גבולות בשרת (JSON עם thumbnails קטנים)
-      setSplitProgress(`מזהה מסמכים...`)
-      const boundRes = await fetch('/api/detect-boundaries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ thumbnails, numPages }),
-      })
-      const { groups } = await boundRes.json() as { groups: number[][] }
-
-      // שלב 4: פיצול ה-PDF בדפדפן עם pdf-lib
-      setSplitProgress(`מפצל ל-${groups.length} מסמכים...`)
       const { PDFDocument } = await import('pdf-lib')
-      const srcDoc = await PDFDocument.load(uint8)
+      const arrayBuffer = await splitFile.arrayBuffer()
+      const srcDoc = await PDFDocument.load(arrayBuffer)
+      const numPages = srcDoc.getPageCount()
 
-      // שלב 5: העלאת כל חלק בנפרד
-      for (let i = 0; i < groups.length; i++) {
-        setSplitProgress(`מעלה ${i + 1}/${groups.length}...`)
+      setSplitProgress(`מפצל ${numPages} עמודים...`)
+      for (let i = 0; i < numPages; i++) {
+        setSplitProgress(`מעלה ${i + 1}/${numPages}...`)
         const newDoc = await PDFDocument.create()
-        const copied = await newDoc.copyPages(srcDoc, groups[i].map(p => p - 1))
-        copied.forEach(p => newDoc.addPage(p))
+        const [copied] = await newDoc.copyPages(srcDoc, [i])
+        newDoc.addPage(copied)
         const bytes = await newDoc.save()
         const partFile = new File(
           [bytes.buffer as ArrayBuffer],
-          `עמ ${groups[i].join('-')} — ${splitFile.name}`,
+          `עמ ${i + 1} — ${splitFile.name}`,
           { type: 'application/pdf' }
         )
         const form = new FormData()
@@ -111,7 +75,7 @@ export default function UploadPage() {
         await fetch('/api/upload', { method: 'POST', body: form })
       }
 
-      setSplitResult(`הועלו ${groups.length} מסמכים מתוך ${numPages} עמודים`)
+      setSplitResult(`הועלו ${numPages} עמודים — AI מחלץ פרטים ברקע`)
     } catch (e) {
       setSplitResult(`שגיאה: ${e instanceof Error ? e.message : 'נסי שוב'}`)
     }
