@@ -27,7 +27,7 @@ export default function RootLayout({
     <html lang="he" dir="rtl" className={`${geistSans.variable} h-full antialiased`}>
       <head>
         <meta name="theme-color" content="#2563eb" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="apple-touch-icon" href="/icon" />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
