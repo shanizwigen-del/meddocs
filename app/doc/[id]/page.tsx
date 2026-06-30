@@ -92,24 +92,31 @@ export default function DocPage() {
           </div>
 
           <div className="bg-white rounded-xl border p-4 space-y-3 text-sm overflow-y-auto">
-            {editingSpecialty ? (
-              <span className="flex gap-1">
-                <input
-                  autoFocus
-                  value={specialtyInput}
-                  onChange={e => setSpecialtyInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && saveSpecialty()}
-                  placeholder="תחום (לדוגמה: פסיכיאטריה)"
-                  className="border rounded px-2 py-0.5 text-xs flex-1"
-                />
-                <button onClick={saveSpecialty} className="text-blue-600 text-xs">שמור</button>
-                <button onClick={() => setEditingSpecialty(false)} className="text-gray-400 text-xs">ביטול</button>
-              </span>
-            ) : (
-              <span onClick={() => { setSpecialtyInput(doc.specialty ?? ''); setEditingSpecialty(true) }} className="cursor-pointer" title="לחץ לעריכה">
-                {doc.specialty ? <SpecialtyChip name={doc.specialty} /> : <span className="text-gray-300 italic text-xs">לחץ להוספת תחום</span>}
-              </span>
-            )}
+            <div>
+              <span className="text-gray-400 text-xs block mb-1">תיקייה / תחום</span>
+              <select
+                value={specialtyInput || doc.specialty || ''}
+                onChange={async e => {
+                  const val = e.target.value
+                  setSpecialtyInput(val)
+                  await fetch(`/api/documents/${id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ specialty: val }),
+                  })
+                  setDoc(d => d ? { ...d, specialty: val } : d)
+                }}
+                className="w-full border rounded px-2 py-1 text-xs bg-white"
+              >
+                <option value="">— בחרי תיקייה —</option>
+                {[
+                  'בריאות הנפש','נוירולוגיה','קרדיולוגיה','אורטופדיה',
+                  'רפואה פנימית','גסטרו','אנדוקרינולוגיה','ראומטולוגיה',
+                  'אלרגיה','עיניים','אא"ג','עור','גינקולוגיה','אונקולוגיה',
+                  'בדיקות מעבדה','הדמיה','אחר',
+                ].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
             {dateStr && <div><span className="text-gray-400">תאריך: </span>{dateStr}</div>}
 
             <div>
