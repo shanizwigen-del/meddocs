@@ -12,17 +12,16 @@ const openai = new OpenAI()
 
 // חילוץ טקסט מכל עמוד ב-PDF
 async function extractPageTexts(buffer: Buffer): Promise<string[]> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require('pdf-parse/lib/pdf-parse')
+  const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(buffer) })
+  const pdf = await loadingTask.promise
   const pages: string[] = []
-
-  await pdfParse(buffer, {
-    pagerender: (pageData: { getTextContent: () => Promise<{ items: { str: string }[] }> }) =>
-      pageData.getTextContent().then((tc: { items: { str: string }[] }) => {
-        pages.push(tc.items.map((i: { str: string }) => i.str).join(' ').slice(0, 800))
-        return ''
-      }),
-  })
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const tc = await page.getTextContent()
+    const text = (tc.items as { str: string }[]).map(item => item.str).join(' ').slice(0, 800)
+    pages.push(text)
+  }
   return pages
 }
 
