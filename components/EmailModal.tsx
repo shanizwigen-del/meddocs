@@ -12,15 +12,26 @@ export function EmailModal({ docId, onClose }: Props) {
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
 
   async function handleSend() {
     setSending(true)
-    await fetch(`/api/documents/${docId}/email`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to, subject, message })
-    })
-    setSent(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/documents/${docId}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, subject, message })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error ?? 'שגיאה בשליחה')
+      } else {
+        setSent(true)
+      }
+    } catch {
+      setError('שגיאת רשת')
+    }
     setSending(false)
   }
 
@@ -46,6 +57,7 @@ export function EmailModal({ docId, onClose }: Props) {
               rows={3}
               className="w-full border rounded-lg px-3 py-2 text-sm resize-none" />
             <div className="flex gap-2">
+            {error && <p className="text-red-500 text-xs">{error}</p>}
               <button onClick={handleSend} disabled={!to || sending}
                 className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-50">
                 {sending ? 'שולח...' : 'שלח'}
