@@ -13,7 +13,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const pdfRes = await fetch(doc.blob_url)
   const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer())
 
-  const senderName = process.env.SENDER_NAME ?? 'מערכת מסמכים רפואית'
+  const senderName = process.env.SENDER_NAME || 'קרן ברקוביץ\''
   const fromAddress = process.env.FROM_EMAIL ?? 'onboarding@resend.dev'
   const from = `${senderName} <${fromAddress}>`
 
