@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 interface FileStatus {
   file: File
   status: 'waiting' | 'uploading' | 'done' | 'error'
-  result?: string
 }
 
 export default function UploadPage() {
@@ -15,6 +14,7 @@ export default function UploadPage() {
   const [splitFile, setSplitFile] = useState<File | null>(null)
   const [splitting, setSplitting] = useState(false)
   const [splitResult, setSplitResult] = useState<string | null>(null)
+  const [splitProgress, setSplitProgress] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const splitRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -50,29 +50,64 @@ export default function UploadPage() {
     if (!splitFile) return
     setSplitting(true)
     setSplitResult(null)
-    try {
-      // שלב 1: העלאה ישירה ל-Blob (עוקפת את גבול ה-4.5MB של Vercel API)
-      const { upload } = await import('@vercel/blob/client')
-      const blob = await upload(splitFile.name, splitFile, {
-        access: 'public',
-        handleUploadUrl: '/api/blob-token',
-      })
+    setSplitProgress('')
 
-      // שלב 2: שליחת ה-URL לעיבוד
-      const res = await fetch('/api/split', {
+    try {
+      const arrayBuffer = await splitFile.arrayBuffer()
+      const uint8 = new Uint8Array(arrayBuffer)
+
+      // שלב 1: חילוץ טקסט בדפדפן עם pdfjs-dist
+      setSplitProgress('קורא עמודים...')
+      const pdfjsLib = await import('pdfjs-dist')
+      // Worker ב-CDN כדי לא להעמיס bundle
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
+
+      const pdf = await pdfjsLib.getDocument({ data: uint8 }).promise
+      const numPages = pdf.numPages
+      const pageTexts: string[] = []
+      for (let i = 1; i <= numPages; i++) {
+        const page = await pdf.getPage(i)
+        const tc = await page.getTextContent()
+        const text = (tc.items as { str: string }[]).map(item => item.str).join(' ').slice(0, 600)
+        pageTexts.push(text)
+      }
+
+      // שלב 2: זיהוי גבולות בשרת (JSON קטן)
+      setSplitProgress(`זיהוי ${numPages} עמודים...`)
+      const boundRes = await fetch('/api/detect-boundaries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ blobUrl: blob.url, filename: splitFile.name }),
+        body: JSON.stringify({ pageTexts }),
       })
-      const data = await res.json()
-      if (res.ok) {
-        setSplitResult(`זוהו ${data.count} מסמכים מתוך ${data.pages} עמודים — מעובד ברקע`)
-      } else {
-        setSplitResult(`שגיאה: ${data.error || 'נסי שוב'}`)
+      const { groups } = await boundRes.json() as { groups: number[][] }
+
+      // שלב 3: פיצול ה-PDF בדפדפן עם pdf-lib
+      setSplitProgress(`מפצל ל-${groups.length} מסמכים...`)
+      const { PDFDocument } = await import('pdf-lib')
+      const srcDoc = await PDFDocument.load(uint8)
+
+      // שלב 4: העלאת כל חלק בנפרד
+      for (let i = 0; i < groups.length; i++) {
+        setSplitProgress(`מעלה ${i + 1}/${groups.length}...`)
+        const newDoc = await PDFDocument.create()
+        const copied = await newDoc.copyPages(srcDoc, groups[i].map(p => p - 1))
+        copied.forEach(p => newDoc.addPage(p))
+        const bytes = await newDoc.save()
+        const partFile = new File(
+          [bytes.buffer as ArrayBuffer],
+          `עמ ${groups[i].join('-')} — ${splitFile.name}`,
+          { type: 'application/pdf' }
+        )
+        const form = new FormData()
+        form.append('file', partFile)
+        await fetch('/api/upload', { method: 'POST', body: form })
       }
+
+      setSplitResult(`הועלו ${groups.length} מסמכים מתוך ${numPages} עמודים`)
     } catch (e) {
       setSplitResult(`שגיאה: ${e instanceof Error ? e.message : 'נסי שוב'}`)
     }
+    setSplitProgress('')
     setSplitting(false)
   }
 
@@ -92,13 +127,14 @@ export default function UploadPage() {
               <p className="text-sm text-gray-700 truncate">📄 {splitFile.name}</p>
               {splitResult ? (
                 <p className="text-sm text-green-700 font-medium">{splitResult}</p>
+              ) : splitting ? (
+                <p className="text-sm text-amber-700 animate-pulse">{splitProgress || 'מעבד...'}</p>
               ) : (
                 <button
                   onClick={splitAndUpload}
-                  disabled={splitting}
-                  className="w-full bg-amber-500 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+                  className="w-full bg-amber-500 text-white rounded-lg py-2 text-sm font-medium"
                 >
-                  {splitting ? 'מנתח ומפרק...' : 'פרק וזהה מסמכים'}
+                  פרק וזהה מסמכים
                 </button>
               )}
             </div>
@@ -111,7 +147,7 @@ export default function UploadPage() {
             </button>
           )}
           <input ref={splitRef} type="file" accept=".pdf" className="hidden"
-            onChange={e => { if (e.target.files?.[0]) setSplitFile(e.target.files[0]) }} />
+            onChange={e => { if (e.target.files?.[0]) { setSplitFile(e.target.files[0]); setSplitResult(null) } }} />
         </div>
 
         <div className="flex items-center gap-3 text-gray-400 text-sm">
@@ -168,7 +204,7 @@ export default function UploadPage() {
           </button>
         )}
 
-        {(allDone || splitResult) && (
+        {(allDone || splitResult?.includes('הועלו')) && (
           <button onClick={() => router.push('/')}
             className="w-full bg-green-600 text-white rounded-lg py-2 font-medium">
             סיים - חזרה לרשימה
