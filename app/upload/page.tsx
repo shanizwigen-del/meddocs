@@ -50,47 +50,77 @@ export default function UploadPage() {
     if (!splitFile) return
     setSplitting(true)
     setSplitResult(null)
-    setSplitProgress('טוען...')
 
     try {
       const arrayBuffer = await splitFile.arrayBuffer()
 
-      // שלב 1: ספירת עמודים עם pdf-lib
-      const { PDFDocument } = await import('pdf-lib')
-      const srcDoc = await PDFDocument.load(arrayBuffer.slice(0))
-      const numPages = srcDoc.getPageCount()
-
-      // שלב 2: רינדור כל עמוד ל-JPEG עם pdfjs-dist
+      // שלב 1: טעינת pdfjs
       setSplitProgress('טוען מנוע PDF...')
       const pdfjsLib = await import('pdfjs-dist')
       pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
-      const pdfData = new Uint8Array(arrayBuffer.slice(0))
-      const pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise
+      const pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) }).promise
+      const numPages = pdfDoc.numPages
 
+      // שלב 2: רינדור thumbnails קטנים לזיהוי גבולות
+      setSplitProgress(`מנתח ${numPages} עמודים...`)
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')!
+      const thumbnails: string[] = []
 
-      for (let i = 0; i < numPages; i++) {
-        setSplitProgress(`מעבד עמוד ${i + 1}/${numPages}...`)
-
-        // רינדור ל-JPEG
-        const page = await pdfDoc.getPage(i + 1)
-        const viewport = page.getViewport({ scale: 2.0 }) // רזולוציה גבוהה לקריאות AI
+      for (let i = 1; i <= numPages; i++) {
+        const page = await pdfDoc.getPage(i)
+        const viewport = page.getViewport({ scale: 0.2 })
         canvas.width = viewport.width
         canvas.height = viewport.height
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await page.render({ canvasContext: ctx as any, viewport, canvas }).promise
-        const jpegBlob = await new Promise<Blob>(resolve =>
-          canvas.toBlob(b => resolve(b!), 'image/jpeg', 0.85)
+        thumbnails.push(canvas.toDataURL('image/jpeg', 0.5).replace('data:image/jpeg;base64,', ''))
+      }
+
+      // שלב 3: זיהוי גבולות
+      setSplitProgress('מזהה מסמכים...')
+      const boundRes = await fetch('/api/detect-boundaries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thumbnails, numPages }),
+      })
+      const { groups } = await boundRes.json() as { groups: number[][] }
+
+      // שלב 4: מיזוג + העלאה לפי קבוצות
+      const { PDFDocument } = await import('pdf-lib')
+      const srcDoc = await PDFDocument.load(arrayBuffer.slice(0))
+
+      for (let g = 0; g < groups.length; g++) {
+        const pageNums = groups[g]
+        setSplitProgress(`מעלה מסמך ${g + 1}/${groups.length} (עמ' ${pageNums.join(',')})...`)
+
+        // PDF רב-עמודי לצפייה
+        const newDoc = await PDFDocument.create()
+        const copied = await newDoc.copyPages(srcDoc, pageNums.map(p => p - 1))
+        copied.forEach(p => newDoc.addPage(p))
+        const pdfBytes = await newDoc.save()
+        const pdfFile = new File(
+          [pdfBytes.buffer as ArrayBuffer],
+          `מסמך-${g + 1}__${splitFile.name}`,
+          { type: 'application/pdf' }
         )
 
-        // העלאת ה-JPEG לשרת
+        // JPEG של עמוד ראשון לחילוץ מטא-דטה
+        const firstPage = await pdfDoc.getPage(pageNums[0])
+        const vp = firstPage.getViewport({ scale: 2.0 })
+        canvas.width = vp.width
+        canvas.height = vp.height
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await firstPage.render({ canvasContext: ctx as any, viewport: vp, canvas }).promise
+        const jpegBlob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/jpeg', 0.85))
+
         const form = new FormData()
-        form.append('file', new File([jpegBlob], `עמ-${i + 1}.jpg`, { type: 'image/jpeg' }))
+        form.append('file', pdfFile)
+        form.append('metaImage', new File([jpegBlob], 'meta.jpg', { type: 'image/jpeg' }))
         await fetch('/api/upload', { method: 'POST', body: form })
       }
 
-      setSplitResult(`הועלו ${numPages} מסמכים — AI מחלץ פרטים ברקע`)
+      setSplitResult(`הועלו ${groups.length} מסמכים מתוך ${numPages} עמודים`)
     } catch (e) {
       setSplitResult(`שגיאה: ${e instanceof Error ? e.message : 'נסי שוב'}`)
     }
@@ -105,10 +135,9 @@ export default function UploadPage() {
       <div className="max-w-lg w-full px-4 space-y-4">
         <h1 className="text-2xl font-semibold text-center">העלאת מסמכים</h1>
 
-        {/* פיצול PDF גדול */}
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 space-y-3">
           <p className="font-medium text-amber-800">📦 PDF עם מספר מסמכים</p>
-          <p className="text-sm text-amber-700">העלי PDF שלם מהסורק — המערכת תפרק אוטומטית לעמודים</p>
+          <p className="text-sm text-amber-700">העלי PDF שלם מהסורק — המערכת תזהה ותפרק אוטומטית לפי מסמכים</p>
           {splitFile ? (
             <div className="space-y-2">
               <p className="text-sm text-gray-700 truncate">📄 {splitFile.name}</p>
@@ -119,19 +148,15 @@ export default function UploadPage() {
               ) : splitting ? (
                 <p className="text-sm text-amber-700 animate-pulse">{splitProgress || 'מעבד...'}</p>
               ) : (
-                <button
-                  onClick={splitAndUpload}
-                  className="w-full bg-amber-500 text-white rounded-lg py-2 text-sm font-medium"
-                >
+                <button onClick={splitAndUpload}
+                  className="w-full bg-amber-500 text-white rounded-lg py-2 text-sm font-medium">
                   פרק וזהה מסמכים
                 </button>
               )}
             </div>
           ) : (
-            <button
-              onClick={() => splitRef.current?.click()}
-              className="w-full border border-amber-300 bg-white rounded-lg py-2 text-sm text-amber-700 hover:bg-amber-50"
-            >
+            <button onClick={() => splitRef.current?.click()}
+              className="w-full border border-amber-300 bg-white rounded-lg py-2 text-sm text-amber-700 hover:bg-amber-50">
               בחרי PDF לפיצול
             </button>
           )}
@@ -143,7 +168,6 @@ export default function UploadPage() {
           <div className="flex-1 border-t" /><span>או</span><div className="flex-1 border-t" />
         </div>
 
-        {/* העלאה רגילה */}
         <div
           onDragOver={e => { e.preventDefault(); setDragging(true) }}
           onDragLeave={() => setDragging(false)}
@@ -157,10 +181,8 @@ export default function UploadPage() {
           <p className="text-sm text-gray-400 mt-1">גרור או לחץ לבחירה</p>
         </div>
 
-        <button
-          onClick={() => cameraRef.current?.click()}
-          className="w-full border-2 border-dashed border-blue-200 rounded-2xl p-5 text-center bg-blue-50 hover:bg-blue-100 transition-colors"
-        >
+        <button onClick={() => cameraRef.current?.click()}
+          className="w-full border-2 border-dashed border-blue-200 rounded-2xl p-5 text-center bg-blue-50 hover:bg-blue-100 transition-colors">
           <p className="text-blue-600 font-medium">📷 צלם מסמך</p>
           <p className="text-xs text-blue-400 mt-1">פתח מצלמה וצלם ישירות</p>
         </button>

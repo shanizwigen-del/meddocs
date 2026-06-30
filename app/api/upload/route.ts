@@ -11,6 +11,9 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
+  // metaImage: JPEG של העמוד הראשון לחילוץ מטא-דטה (אופציונלי)
+  const metaImage = formData.get('metaImage') as File | null
+
   const uniqueName = `${Date.now()}-${file.name}`
   const blob = await put(uniqueName, file, { access: 'public' })
 
@@ -21,17 +24,27 @@ export async function POST(req: NextRequest) {
   `
   const id = rows[0].id
 
-  // waitUntil שומר את הפונקציה חיה עד שהעיבוד מסתיים
-  waitUntil(processDocument(id, blob.url, file.type))
+  waitUntil(processDocument(id, blob.url, file.type, metaImage))
 
   return NextResponse.json({ id })
 }
 
-async function processDocument(id: string, blobUrl: string, mimeType = 'application/pdf') {
+async function processDocument(id: string, blobUrl: string, mimeType: string, metaImage: File | null) {
   try {
-    const res = await fetch(blobUrl)
-    const buffer = Buffer.from(await res.arrayBuffer())
-    const metadata = await extractMetadata(buffer, mimeType)
+    let buffer: Buffer
+    let extractMime: string
+
+    if (metaImage) {
+      // השתמש ב-JPEG לחילוץ — הרבה יותר אמין לסרוקים
+      buffer = Buffer.from(await metaImage.arrayBuffer())
+      extractMime = metaImage.type
+    } else {
+      const res = await fetch(blobUrl)
+      buffer = Buffer.from(await res.arrayBuffer())
+      extractMime = mimeType
+    }
+
+    const metadata = await extractMetadata(buffer, extractMime)
 
     await sql`
       UPDATE documents SET
