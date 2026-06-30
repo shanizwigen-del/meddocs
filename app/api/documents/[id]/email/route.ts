@@ -13,11 +13,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const pdfRes = await fetch(doc.blob_url)
   const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer())
 
+  // שם השולח — שם הרופא אם קיים, אחרת שם כללי
+  const senderName = doc.doctor ? `ד"ר ${doc.doctor}` : 'מערכת מסמכים רפואית'
+  const fromAddress = process.env.FROM_EMAIL ?? 'onboarding@resend.dev'
+  const from = `${senderName} <${fromAddress}>`
+
   const { error } = await resend.emails.send({
-    from: process.env.FROM_EMAIL ?? 'onboarding@resend.dev',
+    from,
     to,
-    subject: subject || `מסמך רפואי: ${doc.specialty} - ${doc.doc_date}`,
-    text: message || `מצורף מסמך: ${doc.filename}`,
+    subject: subject || `מסמך רפואי: ${doc.specialty ?? ''} - ${doc.doc_date ?? ''}`,
+    text: message || `שלום,\n\nמצורף מסמך רפואי: ${doc.filename}\n\n${senderName}`,
     attachments: [{ filename: doc.filename, content: pdfBuffer }],
   })
 
