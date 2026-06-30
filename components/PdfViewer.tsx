@@ -1,23 +1,47 @@
 'use client'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
-export function PdfViewer({ url }: { url: string }) {
+export function PdfViewer({ url, docId, initialRotations }: {
+  url: string
+  docId: string
+  initialRotations?: Record<string, number>
+}) {
   const [numPages, setNumPages] = useState(0)
-  const [rotations, setRotations] = useState<Record<number, number>>({})
+  const [rotations, setRotations] = useState<Record<number, number>>(
+    initialRotations ? Object.fromEntries(Object.entries(initialRotations).map(([k, v]) => [Number(k), v])) : {}
+  )
   const [containerWidth, setContainerWidth] = useState(800)
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const containerRef = useCallback((node: HTMLDivElement | null) => {
     if (node) setContainerWidth(node.clientWidth - 32)
   }, [])
 
   function rotate(page: number) {
-    setRotations(r => ({ ...r, [page]: ((r[page] ?? 0) + 90) % 360 }))
+    setRotations(r => {
+      const next = { ...r, [page]: ((r[page] ?? 0) + 90) % 360 }
+      scheduleSave(next)
+      return next
+    })
   }
+
+  function scheduleSave(rots: Record<number, number>) {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      fetch(`/api/documents/${docId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page_rotations: rots }),
+      })
+    }, 800)
+  }
+
+  useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current) }, [])
 
   return (
     <div ref={containerRef} className="w-full h-full overflow-y-auto bg-gray-200 p-4 space-y-4">

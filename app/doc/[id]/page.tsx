@@ -14,6 +14,7 @@ interface Doc {
   hospital: string | null
   specialty: string | null
   keywords: string[] | null
+  page_rotations: Record<string, number> | null
   status: string
 }
 
@@ -52,7 +53,7 @@ export default function DocPage() {
 
         <div className="grid grid-cols-4 gap-4" style={{ height: 'calc(100vh - 90px)' }}>
           <div className="col-span-3 rounded-xl overflow-hidden border">
-            <PdfViewer url={doc.blob_url} />
+            <PdfViewer url={doc.blob_url} docId={id} initialRotations={doc.page_rotations ?? {}} />
           </div>
 
           <div className="bg-white rounded-xl border p-4 space-y-3 text-sm overflow-y-auto">
