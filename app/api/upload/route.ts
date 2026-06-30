@@ -1,3 +1,5 @@
+export const maxDuration = 30
+
 import { put } from '@vercel/blob'
 import { waitUntil } from '@vercel/functions'
 import { sql } from '@/lib/db'
