@@ -15,12 +15,12 @@ const SPECIALTIES_LIST = 'פסיכיאטריה | נוירולוגיה | קרדי
 
 const PROMPT = `חלץ מידע ממסמך רפואי זה והחזר JSON בלבד:
 {
-  "doc_date": "YYYY-MM-DD או null",
+  "doc_date": "YYYY-MM-DD או null — תאריך המסמך/הסיכום",
   "doctor": "שם הרופא המלא או null",
   "hospital": "שם בית החולים/מרפאה או null",
   "specialty": "אחד מ: ${SPECIALTIES_LIST}",
-  "summary": "תיאור קצר 1-2 משפטים בעברית",
-  "keywords": ["מילות", "מפתח"]
+  "summary": "",
+  "keywords": []
 }
 החזר JSON בלבד.`
 
