@@ -56,37 +56,45 @@ export default function UploadPage() {
       const arrayBuffer = await splitFile.arrayBuffer()
       const uint8 = new Uint8Array(arrayBuffer)
 
-      // שלב 1: חילוץ טקסט בדפדפן עם pdfjs-dist
-      setSplitProgress('קורא עמודים...')
+      // שלב 1: טעינת pdfjs עם worker מקומי
+      setSplitProgress('טוען מנוע PDF...')
       const pdfjsLib = await import('pdfjs-dist')
-      // Worker ב-CDN כדי לא להעמיס bundle
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
-
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
       const pdf = await pdfjsLib.getDocument({ data: uint8 }).promise
       const numPages = pdf.numPages
-      const pageTexts: string[] = []
+
+      // שלב 2: רינדור כל עמוד כ-thumbnail JPEG (100px רוחב)
+      setSplitProgress(`מעבד ${numPages} עמודים...`)
+      const thumbnails: string[] = []
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')!
+
       for (let i = 1; i <= numPages; i++) {
         const page = await pdf.getPage(i)
-        const tc = await page.getTextContent()
-        const text = (tc.items as { str: string }[]).map(item => item.str).join(' ').slice(0, 600)
-        pageTexts.push(text)
+        const viewport = page.getViewport({ scale: 0.15 })
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await page.render({ canvasContext: ctx as any, viewport, canvas }).promise
+        const jpeg = canvas.toDataURL('image/jpeg', 0.5).replace('data:image/jpeg;base64,', '')
+        thumbnails.push(jpeg)
       }
 
-      // שלב 2: זיהוי גבולות בשרת (JSON קטן)
-      setSplitProgress(`זיהוי ${numPages} עמודים...`)
+      // שלב 3: זיהוי גבולות בשרת (JSON עם thumbnails קטנים)
+      setSplitProgress(`מזהה מסמכים...`)
       const boundRes = await fetch('/api/detect-boundaries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageTexts }),
+        body: JSON.stringify({ thumbnails, numPages }),
       })
       const { groups } = await boundRes.json() as { groups: number[][] }
 
-      // שלב 3: פיצול ה-PDF בדפדפן עם pdf-lib
+      // שלב 4: פיצול ה-PDF בדפדפן עם pdf-lib
       setSplitProgress(`מפצל ל-${groups.length} מסמכים...`)
       const { PDFDocument } = await import('pdf-lib')
       const srcDoc = await PDFDocument.load(uint8)
 
-      // שלב 4: העלאת כל חלק בנפרד
+      // שלב 5: העלאת כל חלק בנפרד
       for (let i = 0; i < groups.length; i++) {
         setSplitProgress(`מעלה ${i + 1}/${groups.length}...`)
         const newDoc = await PDFDocument.create()
@@ -126,7 +134,9 @@ export default function UploadPage() {
             <div className="space-y-2">
               <p className="text-sm text-gray-700 truncate">📄 {splitFile.name}</p>
               {splitResult ? (
-                <p className="text-sm text-green-700 font-medium">{splitResult}</p>
+                <p className={`text-sm font-medium ${splitResult.startsWith('שגיאה') ? 'text-red-600' : 'text-green-700'}`}>
+                  {splitResult}
+                </p>
               ) : splitting ? (
                 <p className="text-sm text-amber-700 animate-pulse">{splitProgress || 'מעבד...'}</p>
               ) : (

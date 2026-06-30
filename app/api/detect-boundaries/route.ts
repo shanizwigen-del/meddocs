@@ -4,29 +4,34 @@ import OpenAI from 'openai'
 const openai = new OpenAI()
 
 export async function POST(req: NextRequest) {
-  const { pageTexts } = await req.json()
-  if (!Array.isArray(pageTexts)) return NextResponse.json({ error: 'invalid' }, { status: 400 })
+  const { thumbnails, numPages } = await req.json() as { thumbnails: string[], numPages: number }
+  if (!thumbnails?.length) return NextResponse.json({ error: 'invalid' }, { status: 400 })
 
-  const numPages = pageTexts.length
-  const pagesDescription = (pageTexts as string[])
-    .map((t, i) => `עמוד ${i + 1}: ${(t || '[ריק]').slice(0, 600)}`)
-    .join('\n\n')
+  // בניית הודעה עם thumbnails לכל עמוד
+  const content: OpenAI.Chat.ChatCompletionContentPart[] = [
+    {
+      type: 'text',
+      text: `להלן תמונות ממוזערות של ${numPages} עמודים מ-PDF שמכיל מספר מסמכים רפואיים שונים.
+זהה היכן מתחיל כל מסמך חדש (כותרת חדשה, בית חולים שונה, סוג מסמך שונה, תאריך חדש בראש הדף).
+החזר JSON בלבד:
+{"groups":[[1,2],[3,4,5],[6]]}
+כל עמוד חייב להופיע בדיוק פעם אחת. עמודים ${numPages}:`,
+    },
+  ]
+
+  thumbnails.forEach((b64, i) => {
+    content.push({ type: 'text', text: `עמוד ${i + 1}:` })
+    content.push({
+      type: 'image_url',
+      image_url: { url: `data:image/jpeg;base64,${b64}`, detail: 'low' },
+    })
+  })
 
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
-    messages: [{
-      role: 'user',
-      content: `להלן תוכן טקסטואלי של ${numPages} עמודים מ-PDF שמכיל מספר מסמכים רפואיים.
-זהה היכן מתחיל כל מסמך חדש (לפי כותרת, תאריך, מוסד, שינוי בתוכן).
-החזר JSON בלבד — מערך של מערכים עם מספרי עמודים (מ-1):
-{"groups":[[1,2],[3,4,5],[6]]}
-כל עמוד חייב להופיע בדיוק פעם אחת.
-
-${pagesDescription}
-
-החזר JSON בלבד:`,
-    }],
+    messages: [{ role: 'user', content }],
     response_format: { type: 'json_object' },
+    max_tokens: 500,
   })
 
   const text = response.choices[0].message.content ?? '{}'
