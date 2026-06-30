@@ -1,5 +1,5 @@
 import { put } from '@vercel/blob'
-import { supabase } from '@/lib/supabase'
+import { sql } from '@/lib/db'
 import { extractMetadata } from '@/lib/claude'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -10,17 +10,16 @@ export async function POST(req: NextRequest) {
 
   const blob = await put(file.name, file, { access: 'public' })
 
-  const { data, error } = await supabase
-    .from('documents')
-    .insert({ blob_url: blob.url, filename: file.name, status: 'processing' })
-    .select('id')
-    .single()
+  const rows = await sql`
+    INSERT INTO documents (blob_url, filename, status)
+    VALUES (${blob.url}, ${file.name}, 'processing')
+    RETURNING id
+  `
+  const id = rows[0].id
 
-  if (error || !data) return NextResponse.json({ error }, { status: 500 })
+  processDocument(id, blob.url).catch(console.error)
 
-  processDocument(data.id, blob.url).catch(console.error)
-
-  return NextResponse.json({ id: data.id })
+  return NextResponse.json({ id })
 }
 
 async function processDocument(id: string, blobUrl: string) {
@@ -29,11 +28,18 @@ async function processDocument(id: string, blobUrl: string) {
     const buffer = Buffer.from(await res.arrayBuffer())
     const metadata = await extractMetadata(buffer)
 
-    await supabase
-      .from('documents')
-      .update({ ...metadata, status: 'ready' })
-      .eq('id', id)
+    await sql`
+      UPDATE documents SET
+        doc_date  = ${metadata.doc_date},
+        doctor    = ${metadata.doctor},
+        hospital  = ${metadata.hospital},
+        specialty = ${metadata.specialty},
+        summary   = ${metadata.summary},
+        keywords  = ${metadata.keywords},
+        status    = 'ready'
+      WHERE id = ${id}
+    `
   } catch {
-    await supabase.from('documents').update({ status: 'error' }).eq('id', id)
+    await sql`UPDATE documents SET status = 'error' WHERE id = ${id}`
   }
 }
