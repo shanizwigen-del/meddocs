@@ -2,7 +2,7 @@
 import {
   Brain, Heart, Bone, Stethoscope, Eye, Ear, Microscope,
   FlaskConical, Flower2, Ribbon, ScanLine, Pill, Baby,
-  Activity, Zap, Wind, FolderOpen
+  UtensilsCrossed, Zap, Wind, FolderOpen
 } from 'lucide-react'
 
 interface FolderConfig {
@@ -50,7 +50,7 @@ const FOLDER_CONFIG: Record<string, FolderConfig> = {
     border: 'border-teal-100',
   },
   'גסטרו': {
-    icon: <Activity size={36} strokeWidth={1.5} />,
+    icon: <UtensilsCrossed size={36} strokeWidth={1.5} />,
     bg: 'bg-yellow-50',
     iconColor: 'text-yellow-600',
     border: 'border-yellow-100',
