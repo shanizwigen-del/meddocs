@@ -53,29 +53,44 @@ export default function UploadPage() {
     setSplitProgress('טוען...')
 
     try {
-      const { PDFDocument } = await import('pdf-lib')
       const arrayBuffer = await splitFile.arrayBuffer()
-      const srcDoc = await PDFDocument.load(arrayBuffer)
+
+      // שלב 1: ספירת עמודים עם pdf-lib
+      const { PDFDocument } = await import('pdf-lib')
+      const srcDoc = await PDFDocument.load(arrayBuffer.slice(0))
       const numPages = srcDoc.getPageCount()
 
-      setSplitProgress(`מפצל ${numPages} עמודים...`)
+      // שלב 2: רינדור כל עמוד ל-JPEG עם pdfjs-dist
+      setSplitProgress('טוען מנוע PDF...')
+      const pdfjsLib = await import('pdfjs-dist')
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
+      const pdfData = new Uint8Array(arrayBuffer.slice(0))
+      const pdfDoc = await pdfjsLib.getDocument({ data: pdfData }).promise
+
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')!
+
       for (let i = 0; i < numPages; i++) {
-        setSplitProgress(`מעלה ${i + 1}/${numPages}...`)
-        const newDoc = await PDFDocument.create()
-        const [copied] = await newDoc.copyPages(srcDoc, [i])
-        newDoc.addPage(copied)
-        const bytes = await newDoc.save()
-        const partFile = new File(
-          [bytes.buffer as ArrayBuffer],
-          `עמ ${i + 1} — ${splitFile.name}`,
-          { type: 'application/pdf' }
+        setSplitProgress(`מעבד עמוד ${i + 1}/${numPages}...`)
+
+        // רינדור ל-JPEG
+        const page = await pdfDoc.getPage(i + 1)
+        const viewport = page.getViewport({ scale: 2.0 }) // רזולוציה גבוהה לקריאות AI
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await page.render({ canvasContext: ctx as any, viewport, canvas }).promise
+        const jpegBlob = await new Promise<Blob>(resolve =>
+          canvas.toBlob(b => resolve(b!), 'image/jpeg', 0.85)
         )
+
+        // העלאת ה-JPEG לשרת
         const form = new FormData()
-        form.append('file', partFile)
+        form.append('file', new File([jpegBlob], `עמ-${i + 1}.jpg`, { type: 'image/jpeg' }))
         await fetch('/api/upload', { method: 'POST', body: form })
       }
 
-      setSplitResult(`הועלו ${numPages} עמודים — AI מחלץ פרטים ברקע`)
+      setSplitResult(`הועלו ${numPages} מסמכים — AI מחלץ פרטים ברקע`)
     } catch (e) {
       setSplitResult(`שגיאה: ${e instanceof Error ? e.message : 'נסי שוב'}`)
     }
@@ -93,7 +108,7 @@ export default function UploadPage() {
         {/* פיצול PDF גדול */}
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 space-y-3">
           <p className="font-medium text-amber-800">📦 PDF עם מספר מסמכים</p>
-          <p className="text-sm text-amber-700">העלי PDF שלם מהסורק — המערכת תזהה ותפרק אוטומטית לפי מסמכים</p>
+          <p className="text-sm text-amber-700">העלי PDF שלם מהסורק — המערכת תפרק אוטומטית לעמודים</p>
           {splitFile ? (
             <div className="space-y-2">
               <p className="text-sm text-gray-700 truncate">📄 {splitFile.name}</p>
