@@ -22,6 +22,7 @@ export default function DocPage() {
   const router = useRouter()
   const [doc, setDoc] = useState<Doc | null>(null)
   const [showEmail, setShowEmail] = useState(false)
+  const [rotation, setRotation] = useState(0)
 
   useEffect(() => {
     fetch(`/api/documents/${id}`).then(r => r.json()).then(setDoc)
@@ -32,15 +33,23 @@ export default function DocPage() {
   )
 
   const dateStr = doc.doc_date ? new Date(doc.doc_date).toLocaleDateString('he-IL') : null
+  const isRotated = rotation % 180 !== 0
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
+      <div className="max-w-6xl mx-auto px-4 py-4 space-y-3">
         <div className="flex items-center justify-between">
           <button onClick={() => router.push('/')} className="text-sm text-gray-500 hover:text-gray-700">
             ← חזרה
           </button>
           <div className="flex gap-2">
+            <button
+              onClick={() => setRotation(r => (r + 90) % 360)}
+              className="border px-3 py-2 rounded-lg text-sm hover:bg-gray-50"
+              title="סובב"
+            >
+              ↻ סובב
+            </button>
             <button
               onClick={() => setShowEmail(true)}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
@@ -57,21 +66,27 @@ export default function DocPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2 bg-white rounded-xl overflow-hidden border h-[75vh]">
-            <iframe src={doc.blob_url} className="w-full h-full" />
+        <div className="grid grid-cols-4 gap-4">
+          <div className="col-span-3 bg-white rounded-xl border overflow-hidden" style={{ height: 'calc(100vh - 100px)' }}>
+            <div className="w-full h-full flex items-center justify-center overflow-hidden">
+              <iframe
+                src={doc.blob_url}
+                style={{
+                  width: isRotated ? 'calc(100vh - 100px)' : '100%',
+                  height: isRotated ? '100%' : 'calc(100vh - 100px)',
+                  transform: `rotate(${rotation}deg)`,
+                  transition: 'transform 0.3s ease',
+                  border: 'none',
+                }}
+              />
+            </div>
           </div>
+
           <div className="bg-white rounded-xl border p-4 space-y-3 text-sm">
             {doc.specialty && <SpecialtyChip name={doc.specialty} />}
             {dateStr       && <div><span className="text-gray-400">תאריך: </span>{dateStr}</div>}
             {doc.doctor    && <div><span className="text-gray-400">רופא: </span>ד&quot;ר {doc.doctor}</div>}
             {doc.hospital  && <div><span className="text-gray-400">מוסד: </span>{doc.hospital}</div>}
-            {doc.summary   && (
-              <div>
-                <p className="text-gray-400 mb-1">סיכום:</p>
-                <p className="text-gray-700 leading-relaxed">{doc.summary}</p>
-              </div>
-            )}
             {doc.keywords && doc.keywords.length > 0 && (
               <div className="flex flex-wrap gap-1 pt-1">
                 {doc.keywords.map((k: string) => (
