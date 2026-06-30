@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     SELECT * FROM documents
     WHERE
       (${specialty} = '' OR specialty = ${specialty})
-      AND (${year} = '' OR EXTRACT(YEAR FROM doc_date) = ${year}::int)
+      AND (${year} = '' OR EXTRACT(YEAR FROM doc_date) = ${year === '' ? null : parseInt(year)})
       AND (
         ${q} = ''
         OR doctor   ILIKE ${'%' + q + '%'}

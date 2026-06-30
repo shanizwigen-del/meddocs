@@ -9,7 +9,8 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
-  const blob = await put(file.name, file, { access: 'public' })
+  const uniqueName = `${Date.now()}-${file.name}`
+  const blob = await put(uniqueName, file, { access: 'public' })
 
   const rows = await sql`
     INSERT INTO documents (blob_url, filename, status)
