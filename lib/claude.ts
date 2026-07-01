@@ -45,7 +45,7 @@ export async function extractMetadata(fileBuffer: Buffer, mimeType = 'applicatio
       : { type: 'input_file' as const, filename: 'document.pdf', file_data: `data:application/pdf;base64,${base64}` }
 
     const response = await client.responses.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       input: [{
         role: 'user',
         content: [
