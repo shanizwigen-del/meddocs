@@ -15,6 +15,7 @@ export default function UploadPage() {
   const [splitting, setSplitting] = useState(false)
   const [splitResult, setSplitResult] = useState<string | null>(null)
   const [splitProgress, setSplitProgress] = useState('')
+  const [merging, setMerging] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const splitRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -128,6 +129,34 @@ export default function UploadPage() {
     setSplitting(false)
   }
 
+  const multipleImages = files.length > 1 && files.every(f => f.file.type.startsWith('image/'))
+
+  async function mergeAndUpload() {
+    setMerging(true)
+    try {
+      const { PDFDocument } = await import('pdf-lib')
+      const doc = await PDFDocument.create()
+      for (const { file } of files) {
+        const ab = await file.arrayBuffer()
+        const isJpeg = file.type === 'image/jpeg'
+        const img = isJpeg
+          ? await doc.embedJpg(ab)
+          : await doc.embedPng(ab)
+        const page = doc.addPage([img.width, img.height])
+        page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height })
+      }
+      const bytes = await doc.save()
+      const merged = new File([bytes.buffer as ArrayBuffer], `מסמך-מאוחד.pdf`, { type: 'application/pdf' })
+      const form = new FormData()
+      form.append('file', merged)
+      await fetch('/api/upload', { method: 'POST', body: form })
+      setFiles(prev => prev.map(f => ({ ...f, status: 'done' as const })))
+    } catch (e) {
+      alert(`שגיאה: ${e instanceof Error ? e.message : 'נסי שוב'}`)
+    }
+    setMerging(false)
+  }
+
   const allDone = files.length > 0 && files.every(f => f.status === 'done')
 
   return (
@@ -209,10 +238,18 @@ export default function UploadPage() {
         )}
 
         {files.length > 0 && !allDone && (
-          <button onClick={uploadAll} disabled={running}
-            className="w-full bg-blue-600 text-white rounded-lg py-2 font-medium disabled:opacity-50">
-            {running ? 'מעלה...' : `העלה ${files.length} קבצים`}
-          </button>
+          <div className="space-y-2">
+            {multipleImages && (
+              <button onClick={mergeAndUpload} disabled={merging || running}
+                className="w-full bg-purple-600 text-white rounded-lg py-2 font-medium disabled:opacity-50">
+                {merging ? 'ממזג...' : `📎 אחד ${files.length} תמונות למסמך אחד`}
+              </button>
+            )}
+            <button onClick={uploadAll} disabled={running || merging}
+              className="w-full bg-blue-600 text-white rounded-lg py-2 font-medium disabled:opacity-50">
+              {running ? 'מעלה...' : multipleImages ? `העלה בנפרד (${files.length} מסמכים)` : `העלה ${files.length} קבצים`}
+            </button>
+          </div>
         )}
 
         {(allDone || splitResult?.includes('הועלו')) && (
