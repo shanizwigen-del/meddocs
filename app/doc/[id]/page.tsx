@@ -65,6 +65,8 @@ export default function DocPage() {
   )
 
   const dateStr = doc.doc_date ? new Date(doc.doc_date).toLocaleDateString('he-IL') : null
+  const isImage = /\.(jpe?g|png|gif|webp|bmp|tiff?)$/i.test(doc.filename) ||
+    /\.(jpe?g|png|gif|webp|bmp|tiff?)$/i.test(doc.blob_url)
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
@@ -87,8 +89,13 @@ export default function DocPage() {
         </div>
 
         <div className="grid grid-cols-4 gap-4" style={{ height: 'calc(100vh - 90px)' }}>
-          <div className="col-span-3 rounded-xl overflow-hidden border">
-            <PdfViewer url={doc.blob_url} docId={id} initialRotations={doc.page_rotations ?? {}} />
+          <div className="col-span-3 rounded-xl overflow-hidden border bg-gray-100 flex items-start justify-center overflow-y-auto">
+            {isImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={doc.blob_url} alt={doc.filename} className="max-w-full h-auto" />
+            ) : (
+              <PdfViewer url={doc.blob_url} docId={id} initialRotations={doc.page_rotations ?? {}} />
+            )}
           </div>
 
           <div className="bg-white rounded-xl border p-4 space-y-3 text-sm overflow-y-auto">
