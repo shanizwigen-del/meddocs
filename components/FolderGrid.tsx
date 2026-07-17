@@ -1,4 +1,5 @@
 'use client'
+import Link from 'next/link'
 import {
   Brain, Heart, Bone, Stethoscope, Eye, Ear, Microscope,
   FlaskConical, Flower2, Ribbon, ScanLine, Pill, Baby,
@@ -157,28 +158,26 @@ function getConfig(specialty: string): FolderConfig {
 interface Props {
   specialty: string
   count: number
-  isOpen: boolean
-  onClick: () => void
 }
 
-export function FolderCard({ specialty, count, isOpen, onClick }: Props) {
+export function FolderCard({ specialty, count }: Props) {
   const cfg = getConfig(specialty)
   return (
-    <button
-      onClick={onClick}
+    <Link
+      href={`/folder/${encodeURIComponent(specialty)}`}
       className={`
-        w-full flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 transition-all
+        flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border-2 transition-all
         ${cfg.bg} ${cfg.border}
-        ${isOpen ? 'shadow-md scale-[1.02] border-opacity-100' : 'hover:shadow-sm hover:scale-[1.01] border-opacity-60'}
+        hover:shadow-md hover:scale-[1.02]
       `}
     >
-      <div className={`${cfg.iconColor} transition-transform ${isOpen ? 'scale-110' : ''}`}>
+      <div className={cfg.iconColor}>
         {cfg.icon}
       </div>
       <div className="text-center space-y-1">
         <p className="font-semibold text-gray-800 text-sm leading-tight">{specialty}</p>
         <p className="text-xs text-gray-400">{count} מסמכים</p>
       </div>
-    </button>
+    </Link>
   )
 }

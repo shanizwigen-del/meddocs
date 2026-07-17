@@ -29,7 +29,6 @@ const FOLDER_MAP: Record<string, string> = {
 
 export default function HomePage() {
   const [docs, setDocs] = useState<Doc[]>([])
-  const [openFolder, setOpenFolder] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [showEmailModal, setShowEmailModal] = useState(false)
@@ -130,7 +129,7 @@ export default function HomePage() {
           type="text"
           placeholder="חיפוש לפי רופא, מוסד, תחום..."
           value={q}
-          onChange={e => { setQ(e.target.value); setOpenFolder(null) }}
+          onChange={e => setQ(e.target.value)}
           className="w-full border rounded-lg px-4 py-2 text-sm bg-white"
         />
 
@@ -156,25 +155,9 @@ export default function HomePage() {
                     key={specialty}
                     specialty={specialty}
                     count={items.length}
-                    isOpen={openFolder === specialty}
-                    onClick={() => setOpenFolder(openFolder === specialty ? null : specialty)}
                   />
                 ))}
             </div>
-
-            {/* תוכן תיקייה פתוחה */}
-            {openFolder && folders[openFolder] && (
-              <div className="bg-white rounded-2xl border shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b bg-gray-50 text-sm font-medium text-gray-700">
-                  {openFolder}
-                </div>
-                <div className="divide-y">
-                  {folders[openFolder]
-                    .sort((a, b) => (b.doc_date ?? '').localeCompare(a.doc_date ?? ''))
-                    .map(doc => renderDoc(doc))}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
