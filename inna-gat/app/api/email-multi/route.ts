@@ -1,4 +1,4 @@
-import { resend } from '@/lib/resend'
+import { getResend } from '@/lib/resend'
 import { sql } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   const fromAddress = process.env.FROM_EMAIL ?? 'onboarding@resend.dev'
   const body = message || 'מצרפת את המסמכים הרלוונטים.'
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: `${SENDER_NAME} <${fromAddress}>`,
     to,
     replyTo: REPLY_TO,
