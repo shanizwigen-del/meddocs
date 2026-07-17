@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { DocumentCard } from '@/components/DocumentCard'
 import { MultiEmailModal } from '@/components/MultiEmailModal'
 import { FolderCard } from '@/components/FolderGrid'
+import { InstallBanner } from '@/components/InstallBanner'
 
 interface Doc {
   id: string
@@ -16,7 +17,6 @@ interface Doc {
   status: string
   thumbnail_url?: string | null
 }
-
 
 const FOLDER_MAP: Record<string, string> = {
   'פסיכיאטריה': 'בריאות הנפש',
@@ -47,10 +47,6 @@ export default function HomePage() {
     const t = setTimeout(fetchDocs, 3000)
     return () => clearTimeout(t)
   }, [docs, fetchDocs])
-
-  function selectAll() {
-    setSelected(new Set(docs.map(d => d.id)))
-  }
 
   async function deleteSelected() {
     if (!confirm(`למחוק ${selected.size} מסמכים?`)) return
@@ -92,99 +88,89 @@ export default function HomePage() {
 
   const selectedDocs = docs.filter(d => selected.has(d.id))
 
-  function renderDoc(doc: Doc) {
-    return (
-      <div key={doc.id} className="flex items-center gap-2 px-4 py-1">
-        <input
-          type="checkbox"
-          checked={selected.has(doc.id)}
-          onChange={() => toggleSelect(doc.id)}
-          onClick={e => e.stopPropagation()}
-          className="w-4 h-4 accent-blue-600 shrink-0 cursor-pointer"
-        />
-        <div className="flex-1">
-          <DocumentCard doc={doc} />
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
-      <div className="max-w-3xl mx-auto px-4 py-8 space-y-6 pb-28">
+      <InstallBanner />
+
+      <div className="max-w-3xl mx-auto px-3 sm:px-4 py-5 sm:py-8 space-y-5 pb-28">
+        {/* כותרת */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-900">המסמכים שלי</h1>
-          <div className="flex items-center gap-2">
-            {docs.length > 0 && (
-              <button onClick={selectAll} className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2">
-                בחר הכל
-              </button>
-            )}
-            <Link href="/upload" className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
-              + העלה מסמך
-            </Link>
-          </div>
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">המסמכים שלי</h1>
+          <Link href="/upload"
+            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm active:scale-95 transition-transform">
+            + העלה
+          </Link>
         </div>
 
+        {/* חיפוש */}
         <input
-          type="text"
+          type="search"
           placeholder="חיפוש לפי רופא, מוסד, תחום..."
           value={q}
           onChange={e => setQ(e.target.value)}
-          className="w-full border rounded-lg px-4 py-2 text-sm bg-white"
+          className="w-full border rounded-xl px-4 py-3 text-sm bg-white shadow-sm"
         />
 
+        {/* תוצאות חיפוש */}
         {q && (
           <div className="space-y-2">
-            <p className="text-sm text-gray-500">{searchResults.length} תוצאות</p>
-            {searchResults.map(doc => renderDoc(doc))}
+            <p className="text-sm text-gray-500 px-1">{searchResults.length} תוצאות</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {searchResults.map(doc => (
+                <div key={doc.id} className="relative">
+                  <input type="checkbox" checked={selected.has(doc.id)}
+                    onChange={() => toggleSelect(doc.id)}
+                    onClick={e => e.stopPropagation()}
+                    className="absolute top-2 right-2 z-10 w-4 h-4 accent-blue-600 cursor-pointer" />
+                  <DocumentCard doc={doc} />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
+        {/* תיקיות */}
         {!q && (
-          <div className="space-y-4">
-            {Object.keys(folders).length === 0 && (
-              <p className="text-center text-gray-400 py-12">אין מסמכים עדיין</p>
+          <div>
+            {Object.keys(folders).length === 0 ? (
+              <div className="text-center py-16 space-y-3">
+                <p className="text-4xl">📂</p>
+                <p className="text-gray-400">אין מסמכים עדיין</p>
+                <Link href="/upload" className="inline-block bg-blue-600 text-white px-6 py-2 rounded-xl text-sm font-medium mt-2">
+                  העלי מסמך ראשון
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {Object.entries(folders)
+                  .sort((a, b) => b[1].length - a[1].length)
+                  .map(([specialty, items]) => (
+                    <FolderCard key={specialty} specialty={specialty} count={items.length} />
+                  ))}
+              </div>
             )}
-
-            {/* גריד תיקיות */}
-            <div className="grid grid-cols-3 gap-4">
-              {Object.entries(folders)
-                .sort((a, b) => b[1].length - a[1].length)
-                .map(([specialty, items]) => (
-                  <FolderCard
-                    key={specialty}
-                    specialty={specialty}
-                    count={items.length}
-                  />
-                ))}
-            </div>
           </div>
         )}
       </div>
 
+      {/* פס תחתון — בחירה מרובה */}
       {selected.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-white border shadow-xl rounded-2xl px-6 py-3">
-          <span className="text-sm text-gray-600">{selected.size} נבחרו</span>
-          <button
-            onClick={() => setShowEmailModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
-          >
-            שלח במייל
-          </button>
-          <button
-            onClick={deleteSelected}
-            disabled={deleting}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-          >
-            {deleting ? 'מוחק...' : 'מחק'}
-          </button>
-          <button
-            onClick={() => setSelected(new Set())}
-            className="text-gray-400 text-sm hover:text-gray-600"
-          >
-            בטל
-          </button>
+        <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t shadow-xl px-4 py-3 flex items-center gap-2 justify-between">
+          <span className="text-sm text-gray-600 font-medium">{selected.size} נבחרו</span>
+          <div className="flex gap-2">
+            <button onClick={() => setShowEmailModal(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+              שלח במייל
+            </button>
+            <button onClick={deleteSelected} disabled={deleting}
+              className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50">
+              {deleting ? 'מוחק...' : 'מחק'}
+            </button>
+            <button onClick={() => setSelected(new Set())}
+              className="text-gray-400 text-sm px-2">
+              ✕
+            </button>
+          </div>
         </div>
       )}
 

@@ -33,7 +33,14 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon" sizes="180x180" />
         <link rel="apple-touch-icon" href="/icon" sizes="152x152" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <script dangerouslySetInnerHTML={{ __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'))
+          }
+        `}} />
+      </body>
     </html>
   );
 }

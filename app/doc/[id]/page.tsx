@@ -88,8 +88,8 @@ export default function DocPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-4" style={{ height: 'calc(100vh - 90px)' }}>
-          <div className="col-span-3 rounded-xl overflow-hidden border bg-gray-100 flex items-start justify-center overflow-y-auto">
+        <div className="flex flex-col md:grid md:grid-cols-4 gap-4" style={{ minHeight: 'calc(100vh - 90px)' }}>
+          <div className="md:col-span-3 rounded-xl overflow-hidden border bg-gray-100 flex items-start justify-center overflow-y-auto" style={{ minHeight: '60vh' }}>
             {isImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={doc.blob_url} alt={doc.filename} className="max-w-full h-auto" />
