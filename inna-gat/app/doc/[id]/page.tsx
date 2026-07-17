@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { SpecialtyChip } from '@/components/SpecialtyChip'
 import { EmailModal } from '@/components/EmailModal'
 import { PdfViewer } from '@/components/PdfViewer'
+import { shareDocuments } from '@/lib/share'
 
 interface Doc {
   id: string
@@ -50,6 +51,13 @@ export default function DocPage() {
     setEditingSpecialty(false)
   }
 
+  async function handleShare() {
+    if (!doc) return
+    const r = await shareDocuments([{ blob_url: doc.blob_url, filename: doc.filename }])
+    if (r === 'unsupported') alert('השיתוף נתמך בעיקר מהנייד. מהמחשב אפשר להוריד או לשלוח במייל.')
+    else if (r === 'error') alert('השיתוף נכשל, נסי שוב')
+  }
+
   async function handleDelete() {
     if (!confirm('למחוק את המסמך לצמיתות?')) return
     setDeleting(true)
@@ -79,6 +87,9 @@ export default function DocPage() {
           <div className="flex gap-2">
             <button onClick={handleDelete} disabled={deleting} className="border border-red-200 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg text-sm">
               {deleting ? 'מוחק...' : 'מחק'}
+            </button>
+            <button onClick={handleShare} className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+              שתף
             </button>
             <button onClick={() => setShowEmail(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
               שלח במייל

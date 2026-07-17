@@ -3,10 +3,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { DocumentCard } from '@/components/DocumentCard'
 import { MultiEmailModal } from '@/components/MultiEmailModal'
+import { shareDocuments } from '@/lib/share'
 
 interface Doc {
   id: string
   filename: string
+  blob_url: string
   doc_date: string | null
   doctor: string | null
   hospital: string | null
@@ -74,6 +76,13 @@ export default function MemberFolderPage() {
     fetchDocs()
   }
 
+  async function shareSelected() {
+    const r = await shareDocuments(selectedDocs.map(d => ({ blob_url: d.blob_url, filename: d.filename })))
+    if (r === 'unsupported') alert('השיתוף נתמך בעיקר מהנייד. מהמחשב אפשר לשלוח במייל.')
+    else if (r === 'error') alert('השיתוף נכשל, נסי שוב')
+    else if (r === 'shared') setSelected(new Set())
+  }
+
   const sorted = [...docs].sort((a, b) => (b.doc_date ?? '').localeCompare(a.doc_date ?? ''))
   const selectedDocs = docs.filter(d => selected.has(d.id))
 
@@ -113,6 +122,12 @@ export default function MemberFolderPage() {
       {selected.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-white border shadow-xl rounded-2xl px-6 py-3">
           <span className="text-sm text-gray-600">{selected.size} נבחרו</span>
+          <button
+            onClick={shareSelected}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          >
+            שתף
+          </button>
           <button
             onClick={() => setShowEmailModal(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"

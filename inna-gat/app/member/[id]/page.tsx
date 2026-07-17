@@ -8,10 +8,12 @@ import { FolderCard } from '@/components/FolderGrid'
 import { AddMemberModal } from '@/components/AddMemberModal'
 import { type Member, ageFromBirth } from '@/components/MemberCard'
 import { colorFor } from '@/lib/memberColors'
+import { shareDocuments } from '@/lib/share'
 
 interface Doc {
   id: string
   filename: string
+  blob_url: string
   doc_date: string | null
   doctor: string | null
   hospital: string | null
@@ -86,6 +88,13 @@ export default function MemberPage() {
       else next.add(id)
       return next
     })
+  }
+
+  async function shareSelected() {
+    const r = await shareDocuments(selectedDocs.map(d => ({ blob_url: d.blob_url, filename: d.filename })))
+    if (r === 'unsupported') alert('השיתוף נתמך בעיקר מהנייד. מהמחשב אפשר לשלוח במייל.')
+    else if (r === 'error') alert('השיתוף נכשל, נסי שוב')
+    else if (r === 'shared') setSelected(new Set())
   }
 
   const folders = docs.reduce<Record<string, Doc[]>>((acc, doc) => {
@@ -195,6 +204,10 @@ export default function MemberPage() {
         <div className="fixed bottom-0 inset-x-0 z-40 bg-white border-t shadow-xl px-4 py-3 flex items-center gap-2 justify-between">
           <span className="text-sm text-gray-600 font-medium">{selected.size} נבחרו</span>
           <div className="flex gap-2">
+            <button onClick={shareSelected}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
+              שתף
+            </button>
             <button onClick={() => setShowEmailModal(true)}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
               שלח במייל
