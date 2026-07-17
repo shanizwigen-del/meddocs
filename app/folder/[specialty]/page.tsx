@@ -13,6 +13,7 @@ interface Doc {
   specialty: string | null
   summary: string | null
   status: string
+  thumbnail_url?: string | null
 }
 
 const FOLDER_MAP: Record<string, string> = {
@@ -91,19 +92,17 @@ export default function FolderPage() {
         {docs.length === 0 ? (
           <p className="text-center text-gray-400 py-16">אין מסמכים בתיקייה זו</p>
         ) : (
-          <div className="bg-white rounded-2xl border shadow-sm overflow-hidden divide-y">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {sorted.map(doc => (
-              <div key={doc.id} className="flex items-center gap-2 px-4 py-1">
+              <div key={doc.id} className="relative">
                 <input
                   type="checkbox"
                   checked={selected.has(doc.id)}
                   onChange={() => toggleSelect(doc.id)}
                   onClick={e => e.stopPropagation()}
-                  className="w-4 h-4 accent-blue-600 shrink-0 cursor-pointer"
+                  className="absolute top-2 right-2 z-10 w-4 h-4 accent-blue-600 cursor-pointer"
                 />
-                <div className="flex-1">
-                  <DocumentCard doc={doc} />
-                </div>
+                <DocumentCard doc={doc} />
               </div>
             ))}
           </div>

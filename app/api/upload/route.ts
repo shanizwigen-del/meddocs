@@ -17,9 +17,19 @@ export async function POST(req: NextRequest) {
   const uniqueName = `${Date.now()}-${file.name}`
   const blob = await put(uniqueName, file, { access: 'public' })
 
+  // thumbnail: תמונה = blob_url עצמה; PDF עם metaImage = שמור JPEG נפרד
+  let thumbnailUrl: string | null = null
+  const isImage = file.type.startsWith('image/')
+  if (isImage) {
+    thumbnailUrl = blob.url
+  } else if (metaImage) {
+    const thumbBlob = await put(`thumb-${Date.now()}.jpg`, metaImage, { access: 'public' })
+    thumbnailUrl = thumbBlob.url
+  }
+
   const rows = await sql`
-    INSERT INTO documents (blob_url, filename, status)
-    VALUES (${blob.url}, ${file.name}, 'processing')
+    INSERT INTO documents (blob_url, filename, status, thumbnail_url)
+    VALUES (${blob.url}, ${file.name}, 'processing', ${thumbnailUrl})
     RETURNING id
   `
   const id = rows[0].id

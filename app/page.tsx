@@ -14,6 +14,7 @@ interface Doc {
   specialty: string | null
   summary: string | null
   status: string
+  thumbnail_url?: string | null
 }
 
 
