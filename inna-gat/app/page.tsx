@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { MemberCard, type Member } from '@/components/MemberCard'
 import { AddMemberModal } from '@/components/AddMemberModal'
 import { InstallBanner } from '@/components/InstallBanner'
+import { FamilyIcon } from '@/components/FamilyIcon'
 
 export default function HomePage() {
   const [members, setMembers] = useState<Member[]>([])
@@ -39,7 +40,9 @@ export default function HomePage() {
           <p className="text-center text-gray-400 py-16">טוען...</p>
         ) : members.length === 0 ? (
           <div className="text-center py-16 space-y-3">
-            <p className="text-4xl">👨‍👩‍👧‍👦</p>
+            <div className="flex justify-center text-gray-300">
+              <FamilyIcon size={64} strokeWidth={1.25} />
+            </div>
             <p className="text-gray-400">עדיין אין בני משפחה</p>
             <button
               onClick={() => setShowAdd(true)}
