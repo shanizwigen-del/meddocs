@@ -3,10 +3,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { DocumentCard } from '@/components/DocumentCard'
 import { MultiEmailModal } from '@/components/MultiEmailModal'
+import { useSelection } from '@/lib/useSelection'
 
 interface Doc {
   id: string
   filename: string
+  blob_url: string
   doc_date: string | null
   doctor: string | null
   hospital: string | null
@@ -31,7 +33,7 @@ export default function FolderPage() {
   const specialty = decodeURIComponent(params.specialty)
   const router = useRouter()
   const [docs, setDocs] = useState<Doc[]>([])
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const { items: selItems, has, toggle, remove, clear } = useSelection()
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -53,28 +55,19 @@ export default function FolderPage() {
     return () => clearTimeout(t)
   }, [docs, fetchDocs])
 
-  function toggleSelect(id: string) {
-    setSelected(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
   async function deleteSelected() {
-    if (!confirm(`למחוק ${selected.size} מסמכים?`)) return
+    if (!confirm(`למחוק ${selItems.length} מסמכים?`)) return
     setDeleting(true)
-    await Promise.all([...selected].map(id =>
+    const ids = selItems.map(i => i.id)
+    await Promise.all(ids.map(id =>
       fetch(`/api/documents/${id}`, { method: 'DELETE' })
     ))
-    setSelected(new Set())
+    remove(ids)
     setDeleting(false)
     fetchDocs()
   }
 
   const sorted = [...docs].sort((a, b) => (b.doc_date ?? '').localeCompare(a.doc_date ?? ''))
-  const selectedDocs = docs.filter(d => selected.has(d.id))
 
   return (
     <div className="min-h-screen bg-gray-50" dir="rtl">
@@ -97,8 +90,8 @@ export default function FolderPage() {
               <div key={doc.id} className="relative">
                 <input
                   type="checkbox"
-                  checked={selected.has(doc.id)}
-                  onChange={() => toggleSelect(doc.id)}
+                  checked={has(doc.id)}
+                  onChange={() => toggle({ id: doc.id, filename: doc.filename, blob_url: doc.blob_url })}
                   onClick={e => e.stopPropagation()}
                   className="absolute top-2 right-2 z-10 w-4 h-4 accent-blue-600 cursor-pointer"
                 />
@@ -109,9 +102,9 @@ export default function FolderPage() {
         )}
       </div>
 
-      {selected.size > 0 && (
+      {selItems.length > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-white border shadow-xl rounded-2xl px-6 py-3">
-          <span className="text-sm text-gray-600">{selected.size} נבחרו</span>
+          <span className="text-sm text-gray-600">{selItems.length} נבחרו</span>
           <button
             onClick={() => setShowEmailModal(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
@@ -126,7 +119,7 @@ export default function FolderPage() {
             {deleting ? 'מוחק...' : 'מחק'}
           </button>
           <button
-            onClick={() => setSelected(new Set())}
+            onClick={clear}
             className="text-gray-400 text-sm hover:text-gray-600"
           >
             בטל
@@ -136,10 +129,10 @@ export default function FolderPage() {
 
       {showEmailModal && (
         <MultiEmailModal
-          selectedIds={[...selected]}
-          selectedNames={selectedDocs.map(d => d.filename)}
+          selectedIds={selItems.map(i => i.id)}
+          selectedNames={selItems.map(i => i.filename)}
           onClose={() => setShowEmailModal(false)}
-          onSent={() => { setShowEmailModal(false); setSelected(new Set()) }}
+          onSent={() => { setShowEmailModal(false); clear() }}
         />
       )}
     </div>
