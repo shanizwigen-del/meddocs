@@ -24,6 +24,14 @@ interface PagesResult {
   documents: { filename: string; pages: number | null }[]
 }
 
+interface DupDoc { id: string; filename: string }
+interface Dupes {
+  exactCount: number
+  nameCount: number
+  exactGroups: DupDoc[][]
+  nameGroups: DupDoc[][]
+}
+
 export default function RecoverPage() {
   const [audit, setAudit] = useState<Audit | null>(null)
   const [loading, setLoading] = useState(false)
@@ -32,6 +40,8 @@ export default function RecoverPage() {
   const [loadingPages, setLoadingPages] = useState(false)
   const [restoring, setRestoring] = useState(false)
   const [restoreMsg, setRestoreMsg] = useState('')
+  const [dupes, setDupes] = useState<Dupes | null>(null)
+  const [loadingDupes, setLoadingDupes] = useState(false)
 
   async function runAudit() {
     setLoading(true)
@@ -61,6 +71,29 @@ export default function RecoverPage() {
       setError('השחזור נכשל, נסי שוב')
     }
     setRestoring(false)
+  }
+
+  async function findDuplicates() {
+    setLoadingDupes(true)
+    setError('')
+    try {
+      const res = await fetch('/api/admin/find-duplicates')
+      if (!res.ok) throw new Error('failed')
+      setDupes(await res.json())
+    } catch {
+      setError('בדיקת הכפילויות נכשלה, נסי שוב')
+    }
+    setLoadingDupes(false)
+  }
+
+  async function deleteDoc(id: string, filename: string) {
+    if (!confirm(`למחוק את "${filename}"? הפעולה בלתי הפיכה.`)) return
+    try {
+      await fetch(`/api/documents/${id}`, { method: 'DELETE' })
+      await findDuplicates()
+    } catch {
+      setError('המחיקה נכשלה, נסי שוב')
+    }
   }
 
   async function countPages() {
@@ -100,6 +133,13 @@ export default function RecoverPage() {
           >
             {loadingPages ? 'סופר עמודים... (עשוי לקחת כמה דקות)' : 'ספירת עמודים'}
           </button>
+          <button
+            onClick={findDuplicates}
+            disabled={loadingDupes}
+            className="bg-white border border-blue-600 text-blue-600 px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+          >
+            {loadingDupes ? 'בודק כפילויות...' : 'בדיקת כפילויות'}
+          </button>
         </div>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -128,6 +168,40 @@ export default function RecoverPage() {
                 ))}
               </div>
             </details>
+          </div>
+        )}
+
+        {dupes && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <Stat label="עותקים זהים לחלוטין" value={dupes.exactCount} highlight={dupes.exactCount > 0} />
+              <Stat label="שמות דומים" value={dupes.nameCount} highlight={dupes.nameCount > 0} />
+            </div>
+
+            {dupes.exactCount === 0 && dupes.nameCount === 0 ? (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-700">
+                לא נמצאו כפילויות 🎉
+              </div>
+            ) : (
+              <>
+                {dupes.exactGroups.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-800">עותקים זהים לחלוטין (מומלץ למחוק את המיותרים):</p>
+                    {dupes.exactGroups.map((g, gi) => (
+                      <DupGroup key={`e${gi}`} group={g} onDelete={deleteDoc} />
+                    ))}
+                  </div>
+                )}
+                {dupes.nameGroups.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-800">שמות דומים (ייתכן שאותו מסמך — כדאי לבדוק):</p>
+                    {dupes.nameGroups.map((g, gi) => (
+                      <DupGroup key={`n${gi}`} group={g} onDelete={deleteDoc} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
@@ -183,6 +257,26 @@ export default function RecoverPage() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function DupGroup({ group, onDelete }: { group: DupDoc[]; onDelete: (id: string, filename: string) => void }) {
+  return (
+    <div className="bg-white border rounded-xl p-3 space-y-1">
+      {group.map((d, i) => (
+        <div key={d.id} className="flex items-center justify-between gap-2 text-xs py-1 border-b last:border-0">
+          <span className="truncate flex-1">
+            {i === 0 && <span className="text-green-600 ml-1">✓ לשמור</span>} {decodeURIComponent(d.filename)}
+          </span>
+          <button
+            onClick={() => onDelete(d.id, d.filename)}
+            className="text-red-500 hover:text-red-700 shrink-0 px-2"
+          >
+            מחק
+          </button>
+        </div>
+      ))}
     </div>
   )
 }
