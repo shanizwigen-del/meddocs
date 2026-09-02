@@ -30,6 +30,8 @@ export default function RecoverPage() {
   const [error, setError] = useState('')
   const [pages, setPages] = useState<PagesResult | null>(null)
   const [loadingPages, setLoadingPages] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const [restoreMsg, setRestoreMsg] = useState('')
 
   async function runAudit() {
     setLoading(true)
@@ -42,6 +44,23 @@ export default function RecoverPage() {
       setError('הבדיקה נכשלה, נסי שוב')
     }
     setLoading(false)
+  }
+
+  async function restoreOrphans() {
+    if (!confirm('לשחזר את הקבצים שנפלו ולהחזיר אותם לאפליקציה?')) return
+    setRestoring(true)
+    setRestoreMsg('')
+    setError('')
+    try {
+      const res = await fetch('/api/admin/restore-orphans', { method: 'POST' })
+      if (!res.ok) throw new Error('failed')
+      const data = await res.json()
+      setRestoreMsg(`שוחזרו ${data.restoredCount} קבצים! הם מופיעים עכשיו באפליקציה 🎉`)
+      await runAudit()
+    } catch {
+      setError('השחזור נכשל, נסי שוב')
+    }
+    setRestoring(false)
   }
 
   async function countPages() {
@@ -131,8 +150,16 @@ export default function RecoverPage() {
                   נמצאו {audit.orphanCount} קבצים ששמורים באחסון אך לא מופיעים באפליקציה 🎯
                 </p>
                 <p className="text-xs text-amber-700">
-                  אלה קבצים שניתן לשחזר בלי להעלות מחדש. אמרי לי והכין כלי שיחזיר אותם לאפליקציה.
+                  אלה קבצים שניתן לשחזר בלי להעלות מחדש.
                 </p>
+                <button
+                  onClick={restoreOrphans}
+                  disabled={restoring}
+                  className="bg-green-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+                >
+                  {restoring ? 'משחזר...' : `שחזר את ${audit.orphanCount} הקבצים לאפליקציה`}
+                </button>
+                {restoreMsg && <p className="text-sm text-green-700 font-medium">{restoreMsg}</p>}
                 <div className="bg-white rounded-lg p-2 max-h-72 overflow-y-auto text-xs text-gray-600 space-y-1 mt-2">
                   {audit.orphans.map((o, i) => (
                     <div key={i} className="flex justify-between gap-2 border-b last:border-0 py-1">
