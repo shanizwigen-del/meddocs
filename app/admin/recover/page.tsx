@@ -267,7 +267,15 @@ function DupGroup({ group, onDelete }: { group: DupDoc[]; onDelete: (id: string,
       {group.map((d, i) => (
         <div key={d.id} className="flex items-center justify-between gap-2 text-xs py-1 border-b last:border-0">
           <span className="truncate flex-1">
-            {i === 0 && <span className="text-green-600 ml-1">✓ לשמור</span>} {decodeURIComponent(d.filename)}
+            {i === 0 && <span className="text-green-600 ml-1">✓ לשמור</span>}{' '}
+            <a
+              href={`/doc/${d.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              {decodeURIComponent(d.filename)}
+            </a>
           </span>
           <button
             onClick={() => onDelete(d.id, d.filename)}
