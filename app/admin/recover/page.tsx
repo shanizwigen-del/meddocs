@@ -42,6 +42,9 @@ export default function RecoverPage() {
   const [restoreMsg, setRestoreMsg] = useState('')
   const [dupes, setDupes] = useState<Dupes | null>(null)
   const [loadingDupes, setLoadingDupes] = useState(false)
+  const [compareInput, setCompareInput] = useState('')
+  const [compareResult, setCompareResult] = useState<{ total: number; foundCount: number; missingCount: number; missing: string[] } | null>(null)
+  const [loadingCompare, setLoadingCompare] = useState(false)
 
   async function runAudit() {
     setLoading(true)
@@ -71,6 +74,25 @@ export default function RecoverPage() {
       setError('השחזור נכשל, נסי שוב')
     }
     setRestoring(false)
+  }
+
+  async function compareNames() {
+    const names = compareInput.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
+    if (names.length === 0) { setError('הדביקי קודם רשימת שמות קבצים'); return }
+    setLoadingCompare(true)
+    setError('')
+    try {
+      const res = await fetch('/api/admin/compare-names', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ names }),
+      })
+      if (!res.ok) throw new Error('failed')
+      setCompareResult(await res.json())
+    } catch {
+      setError('ההשוואה נכשלה, נסי שוב')
+    }
+    setLoadingCompare(false)
   }
 
   async function findDuplicates() {
@@ -143,6 +165,55 @@ export default function RecoverPage() {
         </div>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        {/* השוואה מול רשימת קבצים מקומית */}
+        <details className="bg-white border rounded-xl p-4">
+          <summary className="text-sm font-medium text-gray-800 cursor-pointer">
+            השוואה מול תיקייה במחשב (לפי שמות)
+          </summary>
+          <div className="space-y-2 mt-3">
+            <p className="text-xs text-gray-500">
+              הדביקי כאן את רשימת שמות הקבצים מהתיקייה במחשב (שם אחד בכל שורה), ואבדוק מי מהם נמצא באפליקציה ומי חסר.
+            </p>
+            <textarea
+              value={compareInput}
+              onChange={e => setCompareInput(e.target.value)}
+              rows={5}
+              placeholder={'לדוגמה:\nPsychiatry_Summary_2025-12-02.pdf\nBlood_Test_2026-01-10.pdf'}
+              className="w-full border rounded-lg px-3 py-2 text-xs font-mono"
+              dir="ltr"
+            />
+            <button
+              onClick={compareNames}
+              disabled={loadingCompare}
+              className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {loadingCompare ? 'משווה...' : 'השווה'}
+            </button>
+
+            {compareResult && (
+              <div className="space-y-2 pt-2">
+                <div className="grid grid-cols-3 gap-2">
+                  <Stat label="ברשימה" value={compareResult.total} muted />
+                  <Stat label="נמצאו באפליקציה" value={compareResult.foundCount} />
+                  <Stat label="חסרים" value={compareResult.missingCount} highlight={compareResult.missingCount > 0} />
+                </div>
+                {compareResult.missingCount === 0 ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+                    כל הקבצים מהרשימה נמצאים באפליקציה 🎉
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
+                    <p className="text-sm font-medium text-amber-800">קבצים שלא נמצאו באפליקציה (מועמדים להעלאה מחדש):</p>
+                    <div className="max-h-60 overflow-y-auto text-xs text-gray-700 space-y-1 mt-1" dir="ltr">
+                      {compareResult.missing.map((m, i) => <div key={i} className="border-b last:border-0 py-1">📄 {m}</div>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </details>
 
         {pages && (
           <div className="space-y-3">
