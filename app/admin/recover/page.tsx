@@ -173,7 +173,9 @@ export default function RecoverPage() {
           </summary>
           <div className="space-y-2 mt-3">
             <p className="text-xs text-gray-500">
-              הדביקי כאן את רשימת שמות הקבצים מהתיקייה במחשב (שם אחד בכל שורה), ואבדוק מי מהם נמצא באפליקציה ומי חסר.
+              הדביקי כאן את רשימת הקבצים מהתיקייה במחשב, ואבדוק מי נמצא באפליקציה ומי חסר.
+              <br />
+              הכי פשוט: בתיקייה — לחצי <b>Ctrl+A</b> (בחירת הכל), אז <b>Shift + לחיצה ימנית</b> → <b>&quot;Copy as path&quot;</b>, והדביקי כאן. (גם רשימת שמות רגילה, שורה בכל שורה, עובדת.)
             </p>
             <textarea
               value={compareInput}

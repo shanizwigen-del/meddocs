@@ -8,10 +8,10 @@ import { NextRequest, NextResponse } from 'next/server'
 // הכלה: קובץ מקורי נחשב "נמצא" אם שמו (ללא סיומת) מופיע בתוך שם של מסמך כלשהו.
 
 function baseName(name: string): string {
-  return name
-    .trim()
-    .replace(/\.[a-z0-9]+$/i, '') // סיומת
-    .toLowerCase()
+  let n = name.trim().replace(/^["']+|["']+$/g, '') // הסרת מרכאות (מ-"Copy as path")
+  n = n.split(/[\\/]/).pop() ?? n                    // רק שם הקובץ, בלי נתיב תיקייה
+  n = n.replace(/\.[a-z0-9]+$/i, '')                 // הסרת סיומת
+  return n.trim().toLowerCase()
 }
 
 export async function POST(req: NextRequest) {
