@@ -1,6 +1,6 @@
 export const maxDuration = 30
 
-import { put } from '@vercel/blob'
+import { readBuffer, savePrivate } from '@/lib/files'
 import { waitUntil } from '@vercel/functions'
 import { sql } from '@/lib/db'
 import { ensureFamilySchema } from '@/lib/schema'
@@ -20,26 +20,25 @@ export async function POST(req: NextRequest) {
   const metaImage = formData.get('metaImage') as File | null
 
   const uniqueName = `${Date.now()}-${file.name}`
-  const blob = await put(uniqueName, file, { access: 'public' })
+  const blobUrl = await savePrivate(uniqueName, file)
 
   // thumbnail: תמונה = blob_url עצמה; PDF עם metaImage = שמור JPEG נפרד
   let thumbnailUrl: string | null = null
   const isImage = file.type.startsWith('image/')
   if (isImage) {
-    thumbnailUrl = blob.url
+    thumbnailUrl = blobUrl
   } else if (metaImage) {
-    const thumbBlob = await put(`thumb-${Date.now()}.jpg`, metaImage, { access: 'public' })
-    thumbnailUrl = thumbBlob.url
+    thumbnailUrl = await savePrivate(`thumb-${Date.now()}.jpg`, metaImage)
   }
 
   const rows = await sql`
     INSERT INTO documents (blob_url, filename, status, thumbnail_url, member_id)
-    VALUES (${blob.url}, ${file.name}, 'processing', ${thumbnailUrl}, ${memberId})
+    VALUES (${blobUrl}, ${file.name}, 'processing', ${thumbnailUrl}, ${memberId})
     RETURNING id
   `
   const id = rows[0].id
 
-  waitUntil(processDocument(id, blob.url, file.type, metaImage))
+  waitUntil(processDocument(id, blobUrl, file.type, metaImage))
 
   return NextResponse.json({ id })
 }
@@ -54,8 +53,7 @@ async function processDocument(id: string, blobUrl: string, mimeType: string, me
       buffer = Buffer.from(await metaImage.arrayBuffer())
       extractMime = metaImage.type
     } else {
-      const res = await fetch(blobUrl)
-      buffer = Buffer.from(await res.arrayBuffer())
+      buffer = await readBuffer(blobUrl)
       extractMime = mimeType
     }
 

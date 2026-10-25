@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { SpecialtyChip } from '@/components/SpecialtyChip'
 import { EmailModal } from '@/components/EmailModal'
 import { PdfViewer } from '@/components/PdfViewer'
+import { fileHref } from '@/lib/file-href'
 
 interface Doc {
   id: string
@@ -82,7 +83,7 @@ export default function DocPage() {
             <button onClick={() => setShowEmail(true)} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium">
               שלח במייל
             </button>
-            <a href={doc.blob_url} download={doc.filename} className="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
+            <a href={fileHref(id, { download: true })} download={doc.filename} className="border px-4 py-2 rounded-lg text-sm hover:bg-gray-50">
               הורד
             </a>
           </div>
@@ -92,9 +93,9 @@ export default function DocPage() {
           <div className="md:col-span-3 rounded-xl overflow-hidden border bg-gray-100 flex items-start justify-center overflow-y-auto" style={{ minHeight: '60vh' }}>
             {isImage ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={doc.blob_url} alt={doc.filename} className="max-w-full h-auto" />
+              <img src={fileHref(id)} alt={doc.filename} className="max-w-full h-auto" />
             ) : (
-              <PdfViewer url={doc.blob_url} docId={id} initialRotations={doc.page_rotations ?? {}} />
+              <PdfViewer url={fileHref(id)} docId={id} initialRotations={doc.page_rotations ?? {}} />
             )}
           </div>
 

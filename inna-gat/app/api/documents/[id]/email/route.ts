@@ -1,5 +1,6 @@
 import { getResend } from '@/lib/resend'
 import { sql } from '@/lib/db'
+import { readBuffer } from '@/lib/files'
 import { NextRequest, NextResponse } from 'next/server'
 
 const SENDER_NAME   = process.env.SENDER_NAME    || 'קרן ברקוביץ\''
@@ -30,8 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const doc = rows[0]
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const pdfRes = await fetch(doc.blob_url)
-  const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer())
+  const pdfBuffer = await readBuffer(doc.blob_url)
 
   const fromAddress = process.env.FROM_EMAIL ?? 'onboarding@resend.dev'
   const body = message || 'מצרפת את המסמכים הרלוונטים.'

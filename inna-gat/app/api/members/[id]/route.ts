@@ -1,6 +1,6 @@
 import { sql } from '@/lib/db'
 import { ensureFamilySchema } from '@/lib/schema'
-import { del } from '@vercel/blob'
+import { removeFile } from '@/lib/files'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -30,9 +30,11 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params
 
   // מחיקת קבצי ה-blob של כל מסמכי בן המשפחה לפני מחיקת הרשומות
-  const docs = await sql`SELECT blob_url FROM documents WHERE member_id = ${id}`
+  const docs = await sql`SELECT blob_url, thumbnail_url FROM documents WHERE member_id = ${id}`
   await Promise.all(
-    docs.map(d => del(d.blob_url).catch(() => {}))
+    docs
+      .flatMap(d => [d.blob_url, d.thumbnail_url !== d.blob_url ? d.thumbnail_url : null])
+      .map(url => removeFile(url).catch(() => {}))
   )
 
   // מחיקת בן המשפחה — ON DELETE CASCADE מוחק את רשומות המסמכים

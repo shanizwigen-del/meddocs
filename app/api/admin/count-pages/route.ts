@@ -1,6 +1,7 @@
 export const maxDuration = 300
 
 import { sql } from '@/lib/db'
+import { readBuffer } from '@/lib/files'
 import { PDFDocument } from 'pdf-lib'
 import { NextResponse } from 'next/server'
 
@@ -12,8 +13,7 @@ const isImage = (name: string) => /\.(jpe?g|png|gif|webp|bmp|tiff?)$/i.test(name
 async function pagesFor(blobUrl: string, filename: string): Promise<number | null> {
   if (isImage(filename) || isImage(blobUrl)) return 1
   try {
-    const res = await fetch(blobUrl)
-    const buf = await res.arrayBuffer()
+    const buf = await readBuffer(blobUrl)
     const pdf = await PDFDocument.load(buf, { ignoreEncryption: true })
     return pdf.getPageCount()
   } catch {

@@ -1,6 +1,7 @@
 export const maxDuration = 300
 
 import { list } from '@vercel/blob'
+import { privateAuth, readBuffer } from '@/lib/files'
 import { sql } from '@/lib/db'
 import { createHash } from 'crypto'
 import { NextResponse } from 'next/server'
@@ -33,7 +34,7 @@ export async function GET() {
   const sizeByUrl = new Map<string, number>()
   let cursor: string | undefined
   do {
-    const res = await list(cursor ? { cursor, limit: 1000 } : { limit: 1000 })
+    const res = await list({ ...(cursor ? { cursor } : {}), limit: 1000, ...privateAuth() })
     for (const b of res.blobs) sizeByUrl.set(b.url, b.size)
     cursor = res.hasMore ? res.cursor : undefined
   } while (cursor)
@@ -53,8 +54,7 @@ export async function GET() {
     if (group.length < 2) continue // גודל ייחודי — לא ייתכן זהה
     for (const doc of group) {
       try {
-        const res = await fetch(doc.blob_url)
-        const buf = Buffer.from(await res.arrayBuffer())
+        const buf = await readBuffer(doc.blob_url)
         hashByUrl.set(doc.blob_url, createHash('sha256').update(buf).digest('hex'))
       } catch { /* דלג */ }
     }
