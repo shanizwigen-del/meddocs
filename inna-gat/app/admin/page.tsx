@@ -15,7 +15,8 @@ export default function AdminPage() {
   const [done, setDone] = useState(false)
 
   // העברה חד-פעמית של הקבצים מהאחסון הציבורי הישן לאחסון הפרטי
-  const [migStatus, setMigStatus] = useState<{ total: number; remaining: number } | null>(null)
+  // unlinked: קבצים במאגר הישן שלא מקושרים לאף מסמך ועוד לא הועתקו (null — המאגר הישן כבר לא מחובר)
+  const [migStatus, setMigStatus] = useState<{ total: number; remaining: number; unlinked: number | null } | null>(null)
   const [migrating, setMigrating] = useState(false)
   const [migLog, setMigLog] = useState<string[]>([])
 
@@ -52,6 +53,27 @@ export default function AdminPage() {
         `✓ הועברו ${migrated}, נשארו ${remaining}`,
       ])
       if (migrated === 0 && failed.length === 0) break
+    }
+    await loadMigStatus()
+    setMigrating(false)
+  }
+
+  async function copyUnlinked() {
+    setMigrating(true)
+    setMigLog([])
+    const r = await fetch('/api/admin/migrate-private', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ unlinked: true }),
+    })
+    if (r.ok) {
+      const { copied, failed } = await r.json() as { copied: number; failed: { id: string; error: string }[] }
+      setMigLog([
+        ...failed.map(f => `⚠ לא הועתק ${f.id}: ${f.error}`),
+        `✓ הועתקו ${copied} קבצים לא מקושרים`,
+      ])
+    } else {
+      setMigLog([`שגיאה בשרת (${r.status})`])
     }
     await loadMigStatus()
     setMigrating(false)
@@ -164,6 +186,23 @@ export default function AdminPage() {
           >
             {migrating ? 'מעביר...' : 'העבר לאחסון פרטי'}
           </button>
+          {migStatus?.remaining === 0 && !!migStatus.unlinked && (
+            <>
+              <p className="text-sm">
+                {`${migStatus.unlinked} קבצים באחסון הישן לא מקושרים לאף מסמך (למשל תמונות של מסמכים שנמחקו). כדאי להעתיק גם אותם לפני מחיקת האחסון הישן.`}
+              </p>
+              <button
+                onClick={copyUnlinked}
+                disabled={migrating}
+                className="w-full border border-gray-900 py-3 rounded-xl font-medium disabled:opacity-50"
+              >
+                {migrating ? 'מעתיק...' : 'העתק גם את הקבצים הלא מקושרים'}
+              </button>
+            </>
+          )}
+          {migStatus?.remaining === 0 && migStatus.unlinked === 0 && (
+            <p className="text-sm">✓ כל הקבצים מהאחסון הישן הועתקו</p>
+          )}
           {migLog.length > 0 && (
             <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm font-mono max-h-64 overflow-y-auto">
               {migLog.map((l, i) => <p key={i} className="text-gray-700">{l}</p>)}
