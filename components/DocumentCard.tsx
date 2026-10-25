@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { fileHref } from '@/lib/file-href'
 
 interface Doc {
   id: string
@@ -25,7 +26,7 @@ export function DocumentCard({ doc }: { doc: Doc }) {
           {doc.thumbnail_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={doc.thumbnail_url}
+              src={fileHref(doc.id, { thumb: true })}
               alt={doc.filename}
               className="w-full h-full object-cover object-top"
             />

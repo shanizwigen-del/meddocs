@@ -1,5 +1,6 @@
 import { resend } from '@/lib/resend'
 import { sql } from '@/lib/db'
+import { readBuffer } from '@/lib/files'
 import { NextRequest, NextResponse } from 'next/server'
 
 const SENDER_NAME = process.env.SENDER_NAME   || 'קרן ברקוביץ\''
@@ -32,8 +33,7 @@ export async function POST(req: NextRequest) {
   const attachments = await Promise.all(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     rows.map(async (doc: any) => {
-      const res = await fetch(doc.blob_url)
-      const content = Buffer.from(await res.arrayBuffer())
+      const content = await readBuffer(doc.blob_url)
       return { filename: doc.filename, content }
     })
   )

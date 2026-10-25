@@ -70,7 +70,7 @@ export default function MemberFolderPage() {
   }
 
   async function shareSelected() {
-    const r = await shareDocuments(selItems.map(i => ({ blob_url: i.blob_url, filename: i.filename })))
+    const r = await shareDocuments(selItems.map(i => ({ id: i.id, filename: i.filename })))
     if (r === 'unsupported') alert('השיתוף נתמך בעיקר מהנייד. מהמחשב אפשר לשלוח במייל.')
     else if (r === 'error') alert('השיתוף נכשל, נסי שוב')
     else if (r === 'shared') clear()

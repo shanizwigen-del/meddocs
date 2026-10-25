@@ -1,5 +1,5 @@
 import { sql } from '@/lib/db'
-import { del } from '@vercel/blob'
+import { removeFile } from '@/lib/files'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -11,9 +11,10 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const rows = await sql`SELECT blob_url FROM documents WHERE id = ${id}`
+  const rows = await sql`SELECT blob_url, thumbnail_url FROM documents WHERE id = ${id}`
   if (!rows[0]) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  await del(rows[0].blob_url)
+  await removeFile(rows[0].blob_url)
+  if (rows[0].thumbnail_url !== rows[0].blob_url) await removeFile(rows[0].thumbnail_url)
   await sql`DELETE FROM documents WHERE id = ${id}`
   return NextResponse.json({ ok: true })
 }

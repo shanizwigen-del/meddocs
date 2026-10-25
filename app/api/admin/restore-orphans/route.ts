@@ -1,6 +1,7 @@
 export const maxDuration = 300
 
 import { list } from '@vercel/blob'
+import { privateAuth, readBuffer } from '@/lib/files'
 import { sql } from '@/lib/db'
 import { extractMetadata } from '@/lib/claude'
 import { NextResponse } from 'next/server'
@@ -21,7 +22,7 @@ export async function POST() {
   const blobs: { url: string; pathname: string }[] = []
   let cursor: string | undefined
   do {
-    const res = await list(cursor ? { cursor, limit: 1000 } : { limit: 1000 })
+    const res = await list({ ...(cursor ? { cursor } : {}), limit: 1000, ...privateAuth() })
     for (const b of res.blobs) blobs.push({ url: b.url, pathname: b.pathname })
     cursor = res.hasMore ? res.cursor : undefined
   } while (cursor)
@@ -47,8 +48,7 @@ export async function POST() {
     `
     const id = ins[0].id
     try {
-      const res = await fetch(o.url)
-      const buffer = Buffer.from(await res.arrayBuffer())
+      const buffer = await readBuffer(o.url)
       const mime = isImage(filename) ? 'image/jpeg' : 'application/pdf'
       const metadata = await extractMetadata(buffer, mime)
       await sql`

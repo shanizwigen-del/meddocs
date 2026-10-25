@@ -1,6 +1,6 @@
 export const maxDuration = 60
 
-import { put, del } from '@vercel/blob'
+import { readBuffer, removeFile, savePrivate } from '@/lib/files'
 import { waitUntil } from '@vercel/functions'
 import { sql } from '@/lib/db'
 import { ensureFamilySchema } from '@/lib/schema'
@@ -76,11 +76,11 @@ async function processGroups(buffer: Buffer, originalFilename: string, groups: n
     try {
       const pageBuffer = await extractPages(new Uint8Array(buffer), groups[i])
       const name = `${Date.now()}-part${i + 1}-${originalFilename}`
-      const blob = await put(name, pageBuffer, { access: 'public' })
+      const blobUrl = await savePrivate(name, pageBuffer)
 
       const rows = await sql`
         INSERT INTO documents (blob_url, filename, status, member_id)
-        VALUES (${blob.url}, ${`עמודים ${groups[i].join(',')} — ${originalFilename}`}, 'processing', ${memberId})
+        VALUES (${blobUrl}, ${`עמודים ${groups[i].join(',')} — ${originalFilename}`}, 'processing', ${memberId})
         RETURNING id
       `
       const id = rows[0].id
@@ -97,7 +97,7 @@ async function processGroups(buffer: Buffer, originalFilename: string, groups: n
     }
   }
   // מחיקת הקובץ הזמני
-  try { await del(tempUrl) } catch {}
+  try { await removeFile(tempUrl) } catch {}
 }
 
 export async function POST(req: NextRequest) {
@@ -106,8 +106,7 @@ export async function POST(req: NextRequest) {
   if (!blobUrl) return NextResponse.json({ error: 'No blobUrl' }, { status: 400 })
   const member = memberId || null
 
-  const res = await fetch(blobUrl)
-  const buffer = Buffer.from(await res.arrayBuffer())
+  const buffer = await readBuffer(blobUrl)
 
   const pdfDoc = await PDFDocument.load(buffer)
   const numPages = pdfDoc.getPageCount()

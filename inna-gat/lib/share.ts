@@ -1,8 +1,10 @@
 // שיתוף מסמכים דרך תפריט השיתוף המובנה של המכשיר (Web Share API).
 // המשתמש בוחר בעצמו Gmail / וואטסאפ / כל אפליקציה — בלי תלות בשירות מייל חיצוני.
 
+import { fileHref } from './file-href'
+
 export interface ShareDoc {
-  blob_url: string
+  id: string
   filename: string
 }
 
@@ -17,7 +19,7 @@ export async function shareDocuments(docs: ShareDoc[], text?: string): Promise<S
   try {
     const files = await Promise.all(
       docs.map(async d => {
-        const res = await fetch(d.blob_url)
+        const res = await fetch(fileHref(d.id))
         const blob = await res.blob()
         return new File([blob], d.filename, {
           type: blob.type || 'application/octet-stream',
